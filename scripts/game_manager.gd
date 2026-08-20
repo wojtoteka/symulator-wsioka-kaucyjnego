@@ -1,0 +1,707 @@
+extends Node
+## GAME MANAGER (autoload "Game")
+## Globalny stan gry: kasa, plecak, czas dnia, combo, Wsiokometr,
+## komunikaty, rekord. Dostępny z każdego skryptu jako "Game".
+
+# --- Sygnały (HUD się na nie podpina) ---
+signal money_changed(kwota: float)
+signal backpack_changed(ile: int, maks: int)
+signal time_changed(sekundy: float)
+signal komunikat(tekst: String)          # śmieszne wiadomości na ekranie
+signal prompt_changed(tekst: String)     # podpowiedź "E: podnieś butelkę"
+signal round_ended(podsumowanie: Dictionary)
+signal stamina_changed(procent: float, pali: bool)   # pasek "Papieros"
+signal wsiokometr_changed(wartosc: float)            # pasek 0-100
+signal combo_changed(poziom: int, mnoznik: int)      # combo przy zbieraniu
+signal meme(tekst: String)                           # wielkie napisy motywacyjne
+signal wstrzas(sila: float)                          # screen shake (odbiera kamera gracza)
+signal przejscie(akcja: Callable)                    # fade: HUD ściemnia, wykonuje akcję, rozjaśnia
+signal upojenie(pijanstwo: float, kac: float)        # 0-1: nakładka koloru na HUD
+signal wyzwanie_changed(opis: String, postep: int, cel: int, zrobione: bool)
+signal skup_zmiana(otwarty: bool)                    # skup złomu otwarty/zamknięty
+signal zlecenie_changed(dane: Dictionary)            # aktywne zlecenie z tablicy ogłoszeń
+
+# --- Ustawienia rundy (wartości w scripts/balans.gd) ---
+const CZAS_RUNDY := Balans.CZAS_RUNDY
+const COMBO_OKNO := Balans.COMBO_OKNO
+const MAKS_MNOZNIK := Balans.MAKS_MNOZNIK
+const SCIEZKA_ZAPISU := "user://najlepszy_wynik.save"
+const SCIEZKA_USTAWIEN := "user://ustawienia.cfg"
+const SCIEZKA_KARIERY := "user://kariera.cfg"
+
+# --- Stan gry ---
+var kasa := 0.0                  # zarobiona kaucja (zł)
+var plecak: Array[Dictionary] = []   # lista przedmiotów: {"nazwa": ..., "kaucja": ...}
+var czas := CZAS_RUNDY
+var gra_trwa := true
+var w_menu := true               # true = gracz jest w menu głównym (timer stoi)
+var rekord := 0.0
+var cel_dnia := Balans.CEL_BAZOWY   # losowany co dzień, patrz _losuj_cel_dnia()
+var cel_osiagniety := false
+var _zarobek_z_lotow := 0.0         # ile już wypłacono za akrobacje (limit dzienny)
+var _ostatni_platny_lot := -99.0
+var statystyki := {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0}
+
+# --- Combo ---
+var combo := 0                   # ile przedmiotów pod rząd
+var _combo_odliczanie := 0.0
+
+# --- Wsiokometr (0-100): rośnie za zbieranie, spada przy bezczynności ---
+var wsiokometr := 0.0
+var _czas_bezczynnosci := 0.0
+var _legenda_ogloszona := false
+
+## Dzienny kurs skupu złomu — codziennie inny, jak na prawdziwej giełdzie
+## (a przynajmniej jak Zdzisiek twierdzi). Mnożnik ceny złomu.
+var kurs_zlomu := 1.0
+var skup_otwarty := true       # zamyka się przed końcem dnia — zdąż!
+
+## Tryb narzędziowy (--testy / --zrzut): gra działa normalnie, ale NIE dotyka
+## zapisu kariery gracza. Patrz zapisz_kariere().
+var tryb_narzedziowy := false
+
+var pierwszy_dzien := true     # tutorial tylko przy pierwszej rozgrywce
+var glosnosc := 1.0            # ustawienia gracza (0-1)
+var czulosc := 1.0             # mnożnik czułości myszy
+
+# --- KARIERA (utrzymuje się między dniami i między uruchomieniami gry) ---
+var dzien := 1
+var bank := 0.0                # odłożona kaucja z poprzednich dni — waluta ulepszeń
+var ulepszenia := {"plecak": 0, "adidasy": 0, "czapka": 0, "pluca": 0, "kluczyki": 0, "dres": 0}
+const ULEPSZENIA_INFO := {
+	"plecak": {"nazwa": "Większy plecak", "opis": "+5 miejsc za poziom", "ceny": [30.0, 60.0, 120.0]},
+	"adidasy": {"nazwa": "Adidasy z bazaru", "opis": "+10% szybkości za poziom", "ceny": [40.0, 100.0]},
+	"czapka": {"nazwa": "Czapka szczęścia", "opis": "Złote fanty 2x częściej", "ceny": [80.0]},
+	"pluca": {"nazwa": "Mocne płuca", "opis": "Sprint pali 25% mniej za poziom", "ceny": [30.0, 70.0]},
+	"kluczyki": {"nazwa": "Kluczyki do skutera", "opis": "Odpalisz Rometa przy garażach", "ceny": [90.0]},
+	"dres": {"nazwa": "ZŁOTY DRES", "opis": "Prestiż +50%. Osiedle klęka", "ceny": [150.0]},
+}
+
+# --- WYZWANIE DNIA (losowane codziennie, nagroda w zł) ---
+var wyzwanie := {}
+const WYZWANIA: Array = [
+	{"id": "piwa", "opis": "Nachlaj się: wypij %d piwa", "cel": 3, "nagroda": 15.0},
+	{"id": "zlote", "opis": "Znajdź %d złote fanty", "cel": 2, "nagroda": 20.0},
+	{"id": "smietniki", "opis": "Przeszukaj %d śmietników", "cel": 6, "nagroda": 10.0},
+	{"id": "trzepak", "opis": "Zalicz %d treningi na trzepaku", "cel": 2, "nagroda": 10.0},
+	{"id": "gleby", "opis": "Zalicz %d gleby (styl dowolny)", "cel": 3, "nagroda": 10.0},
+	{"id": "ciosy", "opis": "Nawal komuś %d razy", "cel": 4, "nagroda": 10.0},
+	{"id": "combo", "opis": "Wykręć combo x4", "cel": 1, "nagroda": 15.0},
+	{"id": "zlom", "opis": "Nazbieraj %d kawałki złomu", "cel": 5, "nagroda": 15.0},
+	{"id": "zlecenia", "opis": "Wykonaj %d zlecenia z tablicy", "cel": 2, "nagroda": 25.0},
+]
+
+var _ostrzezenie_skupu := false   # czy Zdzisiek już krzyknął "zamykam!"
+var _ostatni_prompt := ""
+var _memy_odliczanie := 18.0   # pierwszy mem po 18 s gry
+var _pierwszy_mem := true      # klasyk MUSI być pierwszy
+
+## Wielkie "motywacyjne" napisy pojawiające się co jakiś czas na środku ekranu.
+const MEMY: Array[String] = [
+	"NIECH ŻYJE KAUCJA I BEZROBOCIE!",
+	"KAUCJA TO NIE PRACA. KAUCJA TO STYL ŻYCIA.",
+	"ZBIERAJ SZKŁO, NIE ZŁUDZENIA.",
+	"BUTELKA W KRZAKACH = BUTELKA W PLECAKU.",
+	"OSIEDLE PAMIĘTA. OSIEDLE DOCENIA.",
+	"50 GROSZY BLIŻEJ MARZEŃ.",
+	"PRACA? NIE ZNAM. KAUCJĘ ZNAM.",
+]
+
+# --- Śmieszne teksty przy podnoszeniu (losowane) ---
+const TEKSTY_PODNOSZENIA: Array[String] = [
+	"50 groszy to 50 groszy.",
+	"Ktoś to wyrzucił? Ich strata.",
+	"Pachnie... kaucją.",
+	"Do kolekcji!",
+	"Emerytura sama się nie uzbiera.",
+	"Niezła fucha!",
+	"Czysty zysk, panie.",
+	"Ekologia się kłania.",
+]
+
+const TEKSTY_PELNY_PLECAK: Array[String] = [
+	"Plecak pełny! Leć do butelkomatu przy Biedronce!",
+	"Nie udźwigniesz więcej. Butelkomat czeka!",
+	"Plecak trzeszczy w szwach. Czas na Biedronkę!",
+]
+
+## Co gracz "mógłby kupić" za zarobioną kwotę — do ekranu podsumowania.
+## Format: [próg_od_zł, lista tekstów do wylosowania]
+const ZAKUPY: Array = [
+	[0.0, [
+		"Stać cię na... nic. Ale próbowałeś i to się liczy.",
+		"Za to nie kupisz nawet reklamówki. Jednorazowej.",
+		"Możesz sobie kupić... powietrze. Osiedlowe.",
+	]],
+	[5.0, [
+		"Stać cię na pół piwa. Bezalkoholowego.",
+		"Starczy na bilet MPK. W jedną stronę.",
+		"Kupisz zapiekankę. Bez sosu.",
+	]],
+	[15.0, [
+		"Stać cię na kebab. Mały, ale z sosem mieszanym!",
+		"Starczy na paczkę fajek i zostanie na zapalniczkę.",
+		"Możesz szaleć: hot-dog Z BIEDRONKI plus napój!",
+	]],
+	[30.0, [
+		"Stać cię na zgrzewkę piwa. Sąsiedzi już pytają o wspólne granie w kapsle.",
+		"Starczy na pizzę. Dużą. Z DOWOZEM.",
+		"Możesz kupić kwiaty sąsiadce. Może przestanie dzwonić po straży miejskiej.",
+	]],
+	[60.0, [
+		"Stać cię na dres. NOWY. Z metką!",
+		"Starczy na doładowanie telefonu I zgrzewkę. Żyjesz jak król.",
+		"Za taką kasę to już można otworzyć własny skup butelek.",
+	]],
+	[100.0, [
+		"REKIN BIZNESU KAUCYJNEGO. Biedronka powinna dać ci etat.",
+		"Stać cię na hulajnogę elektryczną. Koniec z bieganiem!",
+		"Taka kwota? Sąsiadka właśnie zaczęła się kłaniać PIERWSZA.",
+	]],
+]
+
+func _ready() -> void:
+	_wczytaj_rekord()
+	_wczytaj_ustawienia()
+	_wczytaj_kariere()
+	_losuj_wyzwanie()
+	_losuj_cel_dnia()        # musi być PO wczytaniu kariery — cel zależy od dnia
+	_losuj_kurs_zlomu()
+	# Tryb deweloperski: `godot -- --autostart` pomija menu główne,
+	# a `--krotki-dzien` skraca rundę do 8 s (testy ekranu podsumowania)
+	if OS.get_cmdline_user_args().has("--autostart"):
+		w_menu = false
+	if OS.get_cmdline_user_args().has("--krotki-dzien"):
+		czas = 8.0
+	# Tryb autotestów: `--autostart --testy` sprawdza logikę i kończy grę
+	if OS.get_cmdline_user_args().has("--testy"):
+		w_menu = false
+		tryb_narzedziowy = true
+		add_child(load("res://scripts/autotest.gd").new())
+	# Tryb zrzutów ekranu: `--autostart --zrzut` obchodzi mapę i zapisuje PNG
+	if OS.get_cmdline_user_args().has("--zrzut"):
+		w_menu = false
+		tryb_narzedziowy = true
+		add_child(load("res://scripts/zrzut.gd").new())
+
+# --- Ulepszenia w akcji (reszta gry pyta o te mnożniki) ---
+func pojemnosc_plecaka() -> int:
+	return Balans.POJEMNOSC_PLECAKA + 5 * ulepszenia["plecak"]
+
+func mnoznik_predkosci() -> float:
+	return 1.0 + 0.1 * ulepszenia["adidasy"]
+
+func mnoznik_szczescia() -> float:
+	return 2.0 if ulepszenia["czapka"] > 0 else 1.0
+
+func mnoznik_papierosa() -> float:
+	return 1.0 - 0.25 * ulepszenia["pluca"]
+
+## Złoty dres podbija cały przyrost Wsiokometru — prestiż to prestiż.
+func mnoznik_prestizu() -> float:
+	return 1.5 if int(ulepszenia.get("dres", 0)) > 0 else 1.0
+
+## Czy gracz ma kluczyki do skutera (bez nich Romet nie odpali).
+func ma_kluczyki() -> bool:
+	return int(ulepszenia.get("kluczyki", 0)) > 0
+
+## Cena następnego poziomu ulepszenia; -1 gdy maks.
+func cena_ulepszenia(id: String) -> float:
+	var poziom: int = ulepszenia[id]
+	var ceny: Array = ULEPSZENIA_INFO[id]["ceny"]
+	return -1.0 if poziom >= ceny.size() else ceny[poziom]
+
+## Zakup w "MELINIE" (ekran podsumowania). Płacimy z banku kariery.
+func kup_ulepszenie(id: String) -> bool:
+	var cena := cena_ulepszenia(id)
+	if cena < 0.0 or bank < cena:
+		return false
+	bank -= cena
+	ulepszenia[id] += 1
+	zapisz_kariere()
+	return true
+
+## Kurs skupu na dziś. Zdzisiek ogłasza go rano i nie podlega negocjacji.
+func _losuj_kurs_zlomu() -> void:
+	kurs_zlomu = randf_range(Balans.SKUP_MNOZNIK_MIN, Balans.SKUP_MNOZNIK_MAX)
+	skup_otwarty = true
+	_ostrzezenie_skupu = false
+
+## Opis kursu do dymków Zdziśka i HUD-u.
+func opis_kursu() -> String:
+	if kurs_zlomu >= 1.3:
+		return "kurs %d%% — ŻNIWA, miedź w górę!" % roundi(kurs_zlomu * 100)
+	elif kurs_zlomu >= 1.05:
+		return "kurs %d%% — dziś płacą przyzwoicie" % roundi(kurs_zlomu * 100)
+	elif kurs_zlomu >= 0.95:
+		return "kurs %d%% — normalka" % roundi(kurs_zlomu * 100)
+	return "kurs %d%% — kryzys, Zdzisiek płacze" % roundi(kurs_zlomu * 100)
+
+# --- Cel dnia ---
+## Cel rośnie z dniem kariery i ma losowe wahanie, więc nigdy nie jest ten sam.
+## Zaokrąglamy do pełnych piątek — "Cel: 87,43 zł" czytałoby się jak błąd.
+func _losuj_cel_dnia() -> void:
+	var baza := Balans.CEL_BAZOWY + Balans.CEL_ZA_DZIEN * (dzien - 1)
+	var wahanie := randf_range(1.0 - Balans.CEL_WAHANIE, 1.0 + Balans.CEL_WAHANIE)
+	cel_dnia = maxf(
+		Balans.CEL_ZAOKRAGLENIE,
+		roundf(baza * wahanie / Balans.CEL_ZAOKRAGLENIE) * Balans.CEL_ZAOKRAGLENIE,
+	)
+	_zarobek_z_lotow = 0.0
+	_ostatni_platny_lot = -99.0
+
+## Premia za wykonanie OBU zadań dnia i kara za odpuszczenie któregokolwiek.
+func premia_dnia() -> float:
+	return Balans.PREMIA_BAZOWA + Balans.PREMIA_ZA_DZIEN * (dzien - 1)
+
+func kara_dnia() -> float:
+	return Balans.KARA_BAZOWA + Balans.KARA_ZA_DZIEN * (dzien - 1)
+
+# --- Akrobacje ---
+## Wypłata za lot z rampy, ograniczona limitem dziennym i odstępem czasu.
+## Zwraca kwotę FAKTYCZNIE wypłaconą (0.0 = limit wyczerpany albo za szybko
+## po poprzednim triku). Prestiż i napisy dostaje gracz tak czy siak — chodzi
+## o to, żeby skakanie w kółko przestało być źródłem utrzymania.
+func nagroda_za_lot(kwota: float) -> float:
+	var teraz := Time.get_ticks_msec() / 1000.0
+	if teraz - _ostatni_platny_lot < Balans.LOT_ODSTEP:
+		return 0.0
+	var zostalo := Balans.LOT_LIMIT_DZIENNY - _zarobek_z_lotow
+	if zostalo <= 0.01:
+		return 0.0
+	var wyplata := minf(kwota, zostalo)
+	_zarobek_z_lotow += wyplata
+	_ostatni_platny_lot = teraz
+	dodaj_kase(wyplata)
+	return wyplata
+
+## Czy dzienny limit kasy za akrobacje został już wyczerpany.
+func limit_lotow_wyczerpany() -> bool:
+	return _zarobek_z_lotow >= Balans.LOT_LIMIT_DZIENNY - 0.01
+
+# --- Wyzwanie dnia ---
+func _losuj_wyzwanie() -> void:
+	wyzwanie = WYZWANIA.pick_random().duplicate()
+	wyzwanie["postep"] = 0
+	wyzwanie["zrobione"] = false
+	wyzwanie_changed.emit(opis_wyzwania(), 0, wyzwanie["cel"], false)
+
+func opis_wyzwania() -> String:
+	# Część wyzwań ma opis bez "%d" (np. "Wykręć combo x4") — podstawianie
+	# celu wywalałoby wtedy błąd formatowania
+	var opis := str(wyzwanie.get("opis", ""))
+	return opis % wyzwanie["cel"] if opis.contains("%") else opis
+
+## Zgłoszenie postępu wyzwania (wołane z całej gry po id).
+func postep_wyzwania(id: String, ile := 1) -> void:
+	if wyzwanie.is_empty() or wyzwanie["id"] != id or wyzwanie["zrobione"] or not gra_trwa:
+		return
+	wyzwanie["postep"] += ile
+	if wyzwanie["postep"] >= wyzwanie["cel"]:
+		wyzwanie["zrobione"] = true
+		dodaj_kase(wyzwanie["nagroda"])
+		Sfx.graj("zlota")
+		wstrzasnij(0.2)
+		meme.emit("WYZWANIE DNIA ZALICZONE! +%s" % zl(wyzwanie["nagroda"]))
+	wyzwanie_changed.emit(opis_wyzwania(), wyzwanie["postep"], wyzwanie["cel"], wyzwanie["zrobione"])
+
+# --- Zapis kariery ---
+func zapisz_kariere() -> void:
+	# Narzędzia deweloperskie (--zrzut, --testy) przewijają dni i sztucznie
+	# nabijają kasę, żeby dało się obejrzeć ekran podsumowania. Bez tej blokady
+	# każde uruchomienie narzędzia dopisywało graczowi kilkadziesiąt złotych
+	# do banku kariery i trzeba było ręcznie odtwarzać zapis.
+	if tryb_narzedziowy:
+		return
+	var cfg := ConfigFile.new()
+	cfg.set_value("kariera", "dzien", dzien)
+	cfg.set_value("kariera", "bank", bank)
+	for id in ulepszenia:
+		cfg.set_value("ulepszenia", id, ulepszenia[id])
+	cfg.save(SCIEZKA_KARIERY)
+
+func _wczytaj_kariere() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SCIEZKA_KARIERY) != OK:
+		return
+	dzien = cfg.get_value("kariera", "dzien", 1)
+	bank = cfg.get_value("kariera", "bank", 0.0)
+	for id in ulepszenia:
+		ulepszenia[id] = cfg.get_value("ulepszenia", id, 0)
+
+## Gracz raportuje poziom upojenia/kaca — HUD nakłada kolorowy filtr.
+func raportuj_upojenie(pijanstwo: float, kac: float) -> void:
+	upojenie.emit(pijanstwo, kac)
+
+## Screen shake — kamera gracza nasłuchuje sygnału "wstrzas".
+func wstrzasnij(sila: float) -> void:
+	wstrzas.emit(sila)
+
+## Prośba o płynne przejście: HUD ściemnia ekran, wykonuje akcję, rozjaśnia.
+func popros_przejscie(akcja: Callable) -> void:
+	przejscie.emit(akcja)
+
+# --- Ustawienia gracza (zapisywane na dysku) ---
+func ustaw_glosnosc(v: float) -> void:
+	glosnosc = clampf(v, 0.0, 1.0)
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(glosnosc, 0.001)))
+	AudioServer.set_bus_mute(0, glosnosc <= 0.0)
+
+func zapisz_ustawienia() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("audio", "glosnosc", glosnosc)
+	cfg.set_value("sterowanie", "czulosc", czulosc)
+	cfg.save(SCIEZKA_USTAWIEN)
+
+func _wczytaj_ustawienia() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SCIEZKA_USTAWIEN) == OK:
+		czulosc = cfg.get_value("sterowanie", "czulosc", 1.0)
+		ustaw_glosnosc(cfg.get_value("audio", "glosnosc", 1.0))
+
+func _process(delta: float) -> void:
+	if not gra_trwa or w_menu:
+		return
+	# Odliczanie czasu dnia
+	czas -= delta
+	time_changed.emit(maxf(czas, 0.0))
+	if czas <= 0.0:
+		koniec_dnia()
+		return
+	# Skup złomu zamyka się przed końcem dnia — Zdzisiek ma swoje życie
+	if skup_otwarty:
+		if not _ostrzezenie_skupu and czas <= Balans.SKUP_OSTRZEZENIE:
+			_ostrzezenie_skupu = true
+			pokaz_komunikat("Zdzisiek ze skupu: \"Zamykam za 2 minuty! Kto ma złom, ten leci!\"")
+		if czas <= Balans.SKUP_ZAMYKA_SIE:
+			skup_otwarty = false
+			skup_zmiana.emit(false)
+			Sfx.graj("blad")
+			pokaz_komunikat("SKUP ZAMKNIĘTY. Złom w plecaku jest teraz wart tyle, co Twoje plany na jutro.")
+	# Odliczanie okna combo
+	if combo > 0:
+		_combo_odliczanie -= delta
+		if _combo_odliczanie <= 0.0:
+			combo = 0
+			combo_changed.emit(0, 1)
+	# Wsiokometr spada przy dłuższej bezczynności
+	if _czas_bezczynnosci > 3.0 and wsiokometr > 0.0:
+		wsiokometr = maxf(wsiokometr - 4.0 * delta, 0.0)
+		wsiokometr_changed.emit(wsiokometr)
+	if wsiokometr < 60.0:
+		_legenda_ogloszona = false   # można zostać legendą ponownie
+	# Memy motywacyjne co ~pół minuty
+	_memy_odliczanie -= delta
+	if _memy_odliczanie <= 0.0:
+		_memy_odliczanie = randf_range(28.0, 45.0)
+		if _pierwszy_mem:
+			_pierwszy_mem = false
+			meme.emit(MEMY[0])   # "NIECH ŻYJE KAUCJA I BEZROBOCIE!" — gwarantowany
+		else:
+			meme.emit(MEMY.pick_random())
+
+## Start gry z menu głównego.
+func start_gry() -> void:
+	w_menu = false
+
+## Gracz raportuje swoją prędkość co klatkę — do liczenia bezczynności.
+func raportuj_ruch(predkosc_pozioma: float, delta: float) -> void:
+	if predkosc_pozioma > 0.5:
+		_czas_bezczynnosci = 0.0
+	else:
+		_czas_bezczynnosci += delta
+
+## Pasek "Papieros" (stamina) — gracz przekazuje stan, HUD wyświetla.
+func ustaw_stamine(procent: float, pali: bool) -> void:
+	stamina_changed.emit(procent, pali)
+
+## Ile slotów plecaka jest zajętych (akumulator zajmuje 4, felga 2).
+func zajete_miejsca() -> int:
+	var suma := 0
+	for przedmiot in plecak:
+		suma += int(przedmiot.get("miejsca", 1))
+	return suma
+
+## Ile sztuk danej kategorii ("kaucja" / "zlom") niesiemy.
+func ile_w_plecaku(kat: String) -> int:
+	var ile := 0
+	for przedmiot in plecak:
+		if przedmiot.get("kategoria", "kaucja") == kat:
+			ile += 1
+	return ile
+
+## Podniesienie przedmiotu: obsługuje plecak, combo i Wsiokometr.
+## Zwraca {"ok": bool, "kaucja": float po mnożniku, "combo": int, "mnoznik": int}
+func podnies_przedmiot(dane: Dictionary, bonus_wsiokometru := 4.0) -> Dictionary:
+	var slotow := int(dane.get("miejsca", 1))
+	if zajete_miejsca() + slotow > pojemnosc_plecaka():
+		if slotow > 1 and zajete_miejsca() < pojemnosc_plecaka():
+			pokaz_komunikat("%s się nie zmieści — potrzeba %d wolnych miejsc. Opróżnij plecak!" % [dane["nazwa"], slotow])
+		else:
+			pokaz_komunikat(TEKSTY_PELNY_PLECAK.pick_random())
+		return {"ok": false}
+	# Combo: kolejne podniesienie w oknie czasowym zwiększa mnożnik kaucji
+	combo += 1
+	_combo_odliczanie = COMBO_OKNO
+	var mnoznik: int = mini(combo, MAKS_MNOZNIK)
+	statystyki["combo_max"] = maxi(statystyki["combo_max"], mnoznik)
+	var kaucja: float = dane["kaucja"] * mnoznik
+	plecak.append({
+		"nazwa": dane["nazwa"], "kaucja": kaucja,
+		"kategoria": dane.get("kategoria", "kaucja"), "miejsca": slotow,
+	})
+	statystyki["zebrane"] += 1
+	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
+	combo_changed.emit(combo, mnoznik)
+	dodaj_wsiokometr(bonus_wsiokometru)
+	if mnoznik >= MAKS_MNOZNIK:
+		wstrzasnij(0.12)   # maksymalne combo lekko trzęsie ekranem
+		postep_wyzwania("combo")
+	return {"ok": true, "kaucja": kaucja, "combo": combo, "mnoznik": mnoznik}
+
+## Zerowanie combo (potrącenie przez auto, gleba z pojazdu).
+func zgub_combo() -> void:
+	if combo == 0:
+		return
+	combo = 0
+	_combo_odliczanie = 0.0
+	combo_changed.emit(0, 1)
+
+## Wysypanie części plecaka — np. po spotkaniu z maską auta.
+## Zwraca liczbę faktycznie zgubionych sztuk.
+func zgub_fanty(ile: int) -> int:
+	var zgubione := 0
+	for i in ile:
+		if plecak.is_empty():
+			break
+		plecak.remove_at(randi() % plecak.size())
+		zgubione += 1
+	if zgubione > 0:
+		backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
+	return zgubione
+
+## Wygrana/premia — kasa rośnie poza butelkomatem (np. zdrapka).
+func dodaj_kase(kwota: float) -> void:
+	kasa += kwota
+	money_changed.emit(kasa)
+	_sprawdz_cel_dnia()
+
+## Cel dnia ZATRZASKUJE się po osiągnięciu: raz zdobyty, zostaje zdobyty,
+## nawet jeśli później mandat zejdzie poniżej progu. Dzięki temu komunikat
+## w grze i rozliczenie na koniec dnia zawsze mówią to samo.
+##
+## Sprawdzenie siedzi tutaj, a nie przy samym butelkomacie, bo kasa wpływa
+## też ze zleceń, zdrapek i akrobacji — wcześniej te drogi nie zaliczały celu
+## i dało się skończyć dzień z kwotą ponad cel, a mimo to dostać karę.
+func _sprawdz_cel_dnia() -> void:
+	if cel_osiagniety or kasa < cel_dnia:
+		return
+	cel_osiagniety = true
+	pokaz_komunikat("CEL DNIA OSIĄGNIĘTY (%s)! Zostało jeszcze wyzwanie." % zl(cel_dnia))
+
+## Mandat od Straży Miejskiej. Płacisz ile masz — reszta "w systemie".
+func zaplac_mandat(kwota: float, powod: String) -> void:
+	var zaplacono := minf(kwota, kasa)
+	kasa -= zaplacono
+	money_changed.emit(kasa)
+	statystyki["mandaty"] += 1
+	Sfx.graj("blad")
+	if zaplacono < kwota:
+		pokaz_komunikat("MANDAT za %s: %s. Nie masz tyle — reszta 'w systemie'." % [powod, zl(kwota)])
+	else:
+		pokaz_komunikat("MANDAT za %s: -%s. Piękna Polska." % [powod, zl(kwota)])
+
+## Wydanie kasy (np. piwo w Biedronce). Zwraca false, gdy brakuje środków.
+func wydaj_kase(kwota: float) -> bool:
+	if kasa < kwota:
+		return false
+	kasa -= kwota
+	money_changed.emit(kasa)
+	return true
+
+## Dodanie przedmiotu do plecaka BEZ combo (np. butelka po wypitym piwie).
+func dodaj_przedmiot_bez_combo(nazwa: String, kaucja: float, kat := "kaucja") -> bool:
+	if zajete_miejsca() >= pojemnosc_plecaka():
+		return false
+	plecak.append({"nazwa": nazwa, "kaucja": kaucja, "kategoria": kat, "miejsca": 1})
+	statystyki["zebrane"] += 1
+	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
+	return true
+
+## Wsiokometr rośnie (zbieranie, grzebanie). Przy 100 — LEGENDA OSIEDLA.
+func dodaj_wsiokometr(ile: float) -> void:
+	wsiokometr = clampf(wsiokometr + ile * mnoznik_prestizu(), 0.0, 100.0)
+	wsiokometr_changed.emit(wsiokometr)
+	if wsiokometr >= 100.0 and not _legenda_ogloszona:
+		_legenda_ogloszona = true
+		Sfx.odpal_klasyk()   # legenda osiedla ma swój hymn
+		wstrzasnij(0.3)
+		pokaz_komunikat("WSIOKOMETR 100% — JESTEŚ LEGENDĄ OSIEDLA!")
+
+## Oddanie zawartości plecaka z danej kategorii ("kaucja" — butelkomat,
+## "zlom" — skup). Reszta zostaje w plecaku. Zwraca {"ile", "kwota"}.
+## "mnoznik_ceny" pozwala skupowi zapłacić wg dziennego kursu złomu.
+func oddaj_kategorie(kat: String, mnoznik_ceny := 1.0) -> Dictionary:
+	var ile := 0
+	var kwota := 0.0
+	var zostaje: Array[Dictionary] = []
+	for przedmiot in plecak:
+		if przedmiot.get("kategoria", "kaucja") == kat:
+			ile += 1
+			kwota += przedmiot["kaucja"] * mnoznik_ceny
+		else:
+			zostaje.append(przedmiot)
+	plecak = zostaje
+	kasa += kwota
+	statystyki["oddane"] += ile
+	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
+	money_changed.emit(kasa)
+	if kat == "zlom":
+		statystyki["oddany_zlom"] += ile
+	_sprawdz_cel_dnia()
+	return {"ile": ile, "kwota": kwota}
+
+## Oddanie butelek i puszek w butelkomacie (złom zostaje — ten idzie na skup).
+func oddaj_wszystko() -> Dictionary:
+	return oddaj_kategorie("kaucja")
+
+## Losowy żartobliwy komentarz "co możesz kupić" za daną kwotę.
+func co_moge_kupic(kwota: float) -> String:
+	var wybrane: Array = ZAKUPY[0][1]
+	for prog in ZAKUPY:
+		if kwota >= prog[0]:
+			wybrane = prog[1]
+	return wybrane.pick_random()
+
+## Koniec rundy — zatrzymuje grę i wysyła podsumowanie do HUD.
+func koniec_dnia() -> void:
+	if not gra_trwa:
+		return
+	gra_trwa = false
+	Sfx.graj("koniec")
+	var nowy_rekord := kasa > rekord
+	if nowy_rekord:
+		rekord = kasa
+		_zapisz_rekord()
+	# Dzienny zarobek trafia do banku kariery (na ulepszenia w MELINIE)
+	bank += kasa
+	# ROZLICZENIE: dzień ma dwa zadania i liczą się oba naraz.
+	# Ostatnie sprawdzenie na wypadek, gdyby kasa zmieniła się bez dodaj_kase().
+	_sprawdz_cel_dnia()
+	var cel_ok := cel_osiagniety
+	var wyzwanie_ok: bool = wyzwanie.get("zrobione", false)
+	var premia := 0.0
+	var kara := 0.0
+	if cel_ok and wyzwanie_ok:
+		premia = premia_dnia()
+		bank += premia
+	else:
+		# Kara nie może wpędzić w minus — osiedle jest surowe, ale nie okrutne
+		kara = minf(kara_dnia(), bank)
+		bank -= kara
+	zapisz_kariere()
+	round_ended.emit({
+		"cel_kwota": cel_dnia,
+		"cel_ok": cel_ok,
+		"premia": premia,
+		"kara": kara,
+		"powod_kary": _powod_kary(cel_ok, wyzwanie_ok),
+		"kasa": kasa,
+		"rekord": rekord,
+		"nowy_rekord": nowy_rekord,
+		"zebrane": statystyki["zebrane"],
+		"oddane": statystyki["oddane"],
+		"smietniki": statystyki["przeszukane_smietniki"],
+		"zlote": statystyki["zlote"],
+		"zlom": statystyki["oddany_zlom"],
+		"zlecenia": statystyki["zlecenia"],
+		"loty": statystyki["loty"],
+		"combo_max": statystyki["combo_max"],
+		"upadki": statystyki["upadki"],
+		"mandaty": statystyki["mandaty"],
+		"w_plecaku": plecak.size(),   # to, czego nie zdążył oddać — przepada :)
+		"cel": cel_osiagniety,
+		"zakupy": co_moge_kupic(kasa),
+		"dzien": dzien,
+		"bank": bank,
+		"wyzwanie_opis": opis_wyzwania(),
+		"wyzwanie_ok": wyzwanie.get("zrobione", false),
+	})
+
+## Za co konkretnie osiedle ściąga karę — gracz ma wiedzieć, co odpuścił.
+func _powod_kary(cel_ok: bool, wyzwanie_ok: bool) -> String:
+	if cel_ok and wyzwanie_ok:
+		return ""
+	if not cel_ok and not wyzwanie_ok:
+		return "ani celu, ani wyzwania"
+	if not cel_ok:
+		return "cel kwotowy niewykonany"
+	return "wyzwanie dnia odpuszczone"
+
+## Reset stanu i przeładowanie sceny — nowy dzień na osiedlu.
+func nowy_dzien() -> void:
+	pierwszy_dzien = false   # tutorial już się nie powtarza
+	_pierwszy_mem = true     # ale klasyk wraca każdego dnia
+	dzien += 1               # kariera idzie do przodu (Heniek też, niestety)
+	zapisz_kariere()
+	_losuj_wyzwanie()
+	_losuj_cel_dnia()        # nowy dzień = nowa poprzeczka
+	_losuj_kurs_zlomu()
+	Zlecenia.nowy_dzien()   # nowe kartki na tablicy ogłoszeń
+	kasa = 0.0
+	plecak.clear()
+	czas = CZAS_RUNDY
+	gra_trwa = true
+	w_menu = false        # restart pomija menu główne — od razu gramy
+	cel_osiagniety = false
+	combo = 0
+	wsiokometr = 0.0
+	_czas_bezczynnosci = 0.0
+	_legenda_ogloszona = false
+	statystyki = {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0}
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+## Wyświetla komunikat na HUD.
+func pokaz_komunikat(tekst: String) -> void:
+	komunikat.emit(tekst)
+
+## Wielki napis na środku ekranu (zlecenia, wielkie momenty).
+func pokaz_meme(tekst: String) -> void:
+	meme.emit(tekst)
+
+## HUD dostaje stan aktywnego zlecenia (pusty słownik = brak zlecenia).
+func ustaw_zlecenie_hud(dane: Dictionary) -> void:
+	zlecenie_changed.emit(dane)
+
+## Wygodny skrót dla reszty gry: zgłoszenie zdarzenia do systemu zleceń.
+## Dzięki temu obiekty świata wołają tylko Game, bez znajomości autoloadu.
+func postep_zlecenia(zdarzenie: String, ile := 1) -> void:
+	Zlecenia.zglos(zdarzenie, ile)
+
+## Ustawia podpowiedź interakcji (wywoływane co klatkę przez gracza).
+func ustaw_prompt(tekst: String) -> void:
+	if tekst == _ostatni_prompt:
+		return
+	_ostatni_prompt = tekst
+	prompt_changed.emit(tekst)
+
+## Losowy tekst przy podnoszeniu zwykłego przedmiotu.
+func losowy_tekst_podnoszenia() -> String:
+	return TEKSTY_PODNOSZENIA.pick_random()
+
+## Formatowanie kwoty po polsku, np. 12.5 -> "12,50 zł".
+static func zl(kwota: float) -> String:
+	return ("%.2f zł" % kwota).replace(".", ",")
+
+# --- Zapis/odczyt rekordu (user://) ---
+func _zapisz_rekord() -> void:
+	var plik := FileAccess.open(SCIEZKA_ZAPISU, FileAccess.WRITE)
+	if plik:
+		plik.store_var(rekord)
+
+func _wczytaj_rekord() -> void:
+	if FileAccess.file_exists(SCIEZKA_ZAPISU):
+		var plik := FileAccess.open(SCIEZKA_ZAPISU, FileAccess.READ)
+		if plik:
+			rekord = float(plik.get_var())
