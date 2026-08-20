@@ -1,5 +1,5 @@
 extends Node3D
-## GOŁĘBIE (dodatek od Claude'a) — stadko dziobie na chodniku.
+## GOŁĘBIE — stadko dziobie na chodniku.
 ## Podbiegasz — odlatują z furkotem i lądują gdzie indziej.
 ## Czasem któryś zostawi "prezent". Taki osiedlowy chrzest.
 
