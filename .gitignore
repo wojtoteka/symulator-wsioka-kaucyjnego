@@ -4,10 +4,10 @@
 export.cfg
 export_credentials.cfg
 
-# Wyeksportowane buildy (86 MB – trzymane lokalnie)
+# Wyeksportowane buildy (86 MB - trzymane lokalnie)
 build/
 
-# Muzyka objęta prawami autorskimi – zostaje lokalnie, nie w repo
+# Muzyka objęta prawami autorskimi - zostaje lokalnie, nie w repo
 music/*.mp3
 music/*.ogg
 music/*.wav

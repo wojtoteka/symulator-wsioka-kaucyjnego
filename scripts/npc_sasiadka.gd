@@ -1,5 +1,5 @@
 extends StaticBody3D
-## NPC SĄSIADKA — stoi przy bloku, obserwuje i komentuje z dezaprobatą,
+## NPC SĄSIADKA - stoi przy bloku, obserwuje i komentuje z dezaprobatą,
 ## gdy gracz podejdzie za blisko. Obraca się w stronę gracza.
 
 const TEKSTY: Array[String] = [
@@ -31,7 +31,7 @@ func _ready() -> void:
 	strefa.body_entered.connect(_ktos_wszedl)
 	strefa.body_exited.connect(_ktos_wyszedl)
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
@@ -76,7 +76,7 @@ func _zbuduj_bryle() -> void:
 func _process(delta: float) -> void:
 	_odliczanie -= delta
 	if _gracz_w_poblizu:
-		# Obraca się w stronę gracza (tylko w osi Y) — "obserwuje"
+		# Obraca się w stronę gracza (tylko w osi Y) - "obserwuje"
 		var cel := _gracz_w_poblizu.global_position
 		cel.y = global_position.y
 		if global_position.distance_to(cel) > 0.5:
@@ -87,7 +87,7 @@ func _process(delta: float) -> void:
 			Game.pokaz_komunikat(TEKSTY.pick_random())
 
 func _ktos_wszedl(cialo: Node3D) -> void:
-	# Tylko gracz — Heńka sąsiadka zna od lat i już nie komentuje
+	# Tylko gracz - Heńka sąsiadka zna od lat i już nie komentuje
 	if cialo is CharacterBody3D and cialo.is_in_group("gracz"):
 		_gracz_w_poblizu = cialo
 
@@ -97,14 +97,14 @@ func _ktos_wyszedl(cialo: Node3D) -> void:
 
 ## Ktoś podniósł rękę na sąsiadkę. Torebka waży 4 kg (same klucze).
 func oberwij(gracz: Node3D) -> void:
-	_odliczanie = CZAS_ODNOWIENIA   # obrażona — chwilę nie komentuje
+	_odliczanie = CZAS_ODNOWIENIA   # obrażona - chwilę nie komentuje
 	# Animacja oburzenia
 	var tw := create_tween()
 	tw.tween_property(self, "rotation:z", 0.15, 0.08)
 	tw.tween_property(self, "rotation:z", -0.12, 0.08)
 	tw.tween_property(self, "rotation:z", 0.0, 0.08)
 	if randf() < Balans.SZANSA_TOREBKI:
-		Game.pokaz_komunikat("Sąsiadka ODDAJE TOREBKĄ! Trafienie krytyczne — gleba!")
+		Game.pokaz_komunikat("Sąsiadka ODDAJE TOREBKĄ! Trafienie krytyczne - gleba!")
 		gracz.gleba()
 	else:
 		Game.pokaz_komunikat("Sąsiadka: POLICJAAAA!!! (nikt nie przyjechał). Wsiokometr +5 za odwagę.")

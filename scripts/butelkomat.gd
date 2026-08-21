@@ -1,5 +1,5 @@
 extends StaticBody3D
-## BUTELKOMAT przy Biedronce — tu gracz oddaje plecak i dostaje kaucję.
+## BUTELKOMAT przy Biedronce - tu gracz oddaje plecak i dostaje kaucję.
 
 var _ekran: MeshInstance3D
 var _material_ekranu: StandardMaterial3D
@@ -14,7 +14,7 @@ func _ready() -> void:
 func nazwa_celu() -> String:
 	return "butelkomat"
 
-## Cios pięścią w butelkomat. Zapchany — pomaga. Sprawny — może się zapchać.
+## Cios pięścią w butelkomat. Zapchany - pomaga. Sprawny - może się zapchać.
 func oberwij(_gracz: Node3D) -> void:
 	if _zapchany:
 		_kopniecie()
@@ -30,7 +30,7 @@ func oberwij(_gracz: Node3D) -> void:
 	else:
 		Game.pokaz_komunikat(["Butelkomat: \"Prosimy nie uderzać w urządzenie\".", "Automat wytrzymał. Serwisant by płakał."].pick_random())
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -85,16 +85,16 @@ func _zbuduj_bryle() -> void:
 
 func podpowiedz() -> String:
 	if _zapchany:
-		return "E — KOPNIJ zapchany butelkomat"
+		return "E - KOPNIJ zapchany butelkomat"
 	var butelki := Game.ile_w_plecaku("kaucja")
 	if butelki == 0:
 		if Game.ile_w_plecaku("zlom") > 0:
-			return "Butelkomat nie bierze złomu — to na skup do Zdziśka"
-		return "Butelkomat — plecak pusty"
-	return "E — oddaj butelki (%d szt.)" % butelki
+			return "Butelkomat nie bierze złomu - to na skup do Zdziśka"
+		return "Butelkomat - plecak pusty"
+	return "E - oddaj butelki (%d szt.)" % butelki
 
 var _liczy := false      # blokada podwójnego uruchomienia "bębnów"
-var _zapchany := false   # czasem się zapycha — celowo wnerwia
+var _zapchany := false   # czasem się zapycha - celowo wnerwia
 
 func interakcja(_gracz: Node3D) -> void:
 	if _liczy:
@@ -109,7 +109,7 @@ func interakcja(_gracz: Node3D) -> void:
 		else:
 			Game.pokaz_komunikat("Plecak pusty. Butelkomat patrzy na Ciebie z politowaniem.")
 		return
-	# Losowe zapchanie — bo prawdziwy butelkomat też tak robi
+	# Losowe zapchanie - bo prawdziwy butelkomat też tak robi
 	if randf() < Balans.SZANSA_ZAPCHANIA:
 		_zapchany = true
 		Sfx.graj("blad")
@@ -117,7 +117,7 @@ func interakcja(_gracz: Node3D) -> void:
 		_ustaw_kolor_ekranu(Color(1, 0.2, 0.2))
 		return
 	# Jednoręki bandyta: kasa nalicza się od razu, ale dźwięk i komunikat
-	# celebrują wygraną — seria cyknięć przyspiesza aż do "jackpotu"
+	# celebrują wygraną - seria cyknięć przyspiesza aż do "jackpotu"
 	_liczy = true
 	var wynik: Dictionary = Game.oddaj_wszystko()
 	Game.postep_zlecenia("butelki_oddane", wynik["ile"])
@@ -132,7 +132,7 @@ func interakcja(_gracz: Node3D) -> void:
 	Game.pokaz_komunikat("JACKPOT! Kaucja +%s! Biznes się kręci." % Game.zl(wynik["kwota"]))
 	_mrugnij_ekranem()
 
-## Kopniak w zapchany automat — metoda serwisowa znana od pokoleń.
+## Kopniak w zapchany automat - metoda serwisowa znana od pokoleń.
 func _kopniecie() -> void:
 	Sfx.graj("brzek")
 	var tw := create_tween()

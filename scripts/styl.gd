@@ -1,12 +1,12 @@
 class_name Styl
-## STYL WIZUALNY — jedno miejsce, które decyduje, jak wygląda CAŁA gra.
+## STYL WIZUALNY - jedno miejsce, które decyduje, jak wygląda CAŁA gra.
 ## Cel: mocno stylizowany, kreskówkowy look w duchu "Slackers - Carts of Glory":
 ## nasycone kolory, płaskie (toon) cieniowanie zamiast miękkich gradientów
 ## i czarny kontur wokół ważnych obiektów.
 ##
 ## Zamiast StandardMaterial3D.new() wszystkie skrypty wołają Styl.bryla(kolor).
 ##
-## Jak działa kontur: to klasyczny "inverted hull" — do materiału podpinamy
+## Jak działa kontur: to klasyczny "inverted hull" - do materiału podpinamy
 ## drugi przebieg (next_pass), który rysuje tę samą bryłę lekko rozdmuchaną
 ## (grow), od środka (CULL_FRONT) i na czarno. Efekt: obwódka jak w kreskówce.
 
@@ -26,7 +26,7 @@ const KONTUR_MIN_GRUBOSC := 0.1   # cieńszej bryły konturem już nie obrysujem
 const NASYCENIE := 1.07
 const PODBICIE_JASNOSCI := 1.0    # jasność zostawiamy palecie
 
-## Materiały bez emisji są współdzielone — dzięki temu setki sztachet i
+## Materiały bez emisji są współdzielone - dzięki temu setki sztachet i
 ## butelek używają garstki materiałów zamiast setek osobnych.
 static var _cache: Dictionary = {}
 
@@ -40,7 +40,7 @@ static func bryla(kolor: Color, kontur := 0.0, emisja := false, unikalny := fals
 		return _cache[klucz]
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = podkrecony
-	# UWAGA: kusi, żeby dać DIFFUSE_TOON — ale w tym rendererze próg jest tak
+	# UWAGA: kusi, żeby dać DIFFUSE_TOON - ale w tym rendererze próg jest tak
 	# ostry, że oświetlone ściany wychodzą jednolicie białe i bryły tracą
 	# objętość. Kreskówkowość robią tu kontury i nasycenie, a cieniowanie
 	# zostaje miękkie, żeby sześciany nadal wyglądały jak sześciany.
@@ -85,7 +85,7 @@ static func podkrec(kolor: Color) -> Color:
 	wynik.a = kolor.a
 	return wynik
 
-## Skrót dla postaci i fantów — gruba obwódka, mają się wyróżniać z tła.
+## Skrót dla postaci i fantów - gruba obwódka, mają się wyróżniać z tła.
 static func postac(kolor: Color) -> StandardMaterial3D:
 	return bryla(kolor, KONTUR_POSTAC)
 
@@ -97,12 +97,12 @@ static func obiekt(kolor: Color) -> StandardMaterial3D:
 static func budynek(kolor: Color) -> StandardMaterial3D:
 	return bryla(kolor, KONTUR_BUDYNEK)
 
-## Skrót dla terenu i dróg — bez konturu, inaczej każda płyta dostaje ramkę.
+## Skrót dla terenu i dróg - bez konturu, inaczej każda płyta dostaje ramkę.
 static func teren(kolor: Color) -> StandardMaterial3D:
 	return bryla(kolor)
 
 ## Metal: blacha garażu, latarnia, felga. Jedyne miejsce, gdzie wpuszczamy
-## odblask — reszta gry jest matowa. Bez tego blaszaki i słupy wyglądają
+## odblask - reszta gry jest matowa. Bez tego blaszaki i słupy wyglądają
 ## jak wycięte z kartonu, bo płaski kolor nie reaguje na obrót bryły.
 static func metal(kolor: Color, kontur := KONTUR_OBIEKT) -> StandardMaterial3D:
 	var klucz := "metal|%s|%.3f" % [kolor.to_html(), kontur]
@@ -137,9 +137,9 @@ static func wariant(kolor: Color, sila := 0.07) -> Color:
 ## jednolita zielona płyta 120x120 zdradza, że to jedno wielkie pudło. Plamy
 ## jaśniejszej i ciemniejszej zieleni od razu robią z tego teren.
 ##
-## Tekstura jest GENEROWANA w kodzie (FastNoiseLite) — projekt nadal nie
+## Tekstura jest GENEROWANA w kodzie (FastNoiseLite) - projekt nadal nie
 ## zawiera ani jednego pliku graficznego.
-## "gestosc" to liczba kafli NA METR — nie na obiekt. To ważne: trawnik ma
+## "gestosc" to liczba kafli NA METR - nie na obiekt. To ważne: trawnik ma
 ## 120 m boku, a chodnik 4 m, więc gdyby teksturę rozciągać na całą bryłę,
 ## plamy na chodniku byłyby 30x większe niż na trawie. Dlatego używamy
 ## triplanar: mapowanie liczy się z pozycji w przestrzeni, a nie z UV siatki,
@@ -149,7 +149,7 @@ static func teren_szum(kolor: Color, gestosc := 0.16, sila := 0.1) -> StandardMa
 	if _cache.has(klucz):
 		return _cache[klucz]
 	var mat := StandardMaterial3D.new()
-	# Kolor niesie tekstura, więc albedo zostaje białe — inaczej mnożyłoby
+	# Kolor niesie tekstura, więc albedo zostaje białe - inaczej mnożyłoby
 	# się z rampą i teren robiłby się dwa razy ciemniejszy.
 	mat.albedo_color = Color.WHITE
 	mat.albedo_texture = _tekstura_szumu(podkrec(kolor), sila)
@@ -188,7 +188,7 @@ static func _tekstura_szumu(kolor: Color, sila: float) -> NoiseTexture2D:
 
 ## Dobiera grubość konturu do wymiarów bryły. Kluczowa zasada: jeśli
 ## najcieńszy wymiar jest mniejszy niż podwójna grubość kreski, obwódka
-## pochłonęłaby obiekt — wtedy rezygnujemy z niej całkowicie.
+## pochłonęłaby obiekt - wtedy rezygnujemy z niej całkowicie.
 static func kontur_dla(rozmiar: Vector3) -> float:
 	var najcienszy := minf(rozmiar.x, minf(rozmiar.y, rozmiar.z))
 	if najcienszy < KONTUR_MIN_GRUBOSC:
@@ -202,31 +202,31 @@ static func kontur_dla(rozmiar: Vector3) -> float:
 # =============================================================================
 # Są DWA rodzaje napisów w świecie i mylenie ich to gotowy błąd graficzny:
 #
-#  1. SZYLD — napis fizycznie namalowany na czymś (logo nad sklepem, "SKOK!"
+#  1. SZYLD - napis fizycznie namalowany na czymś (logo nad sklepem, "SKOK!"
 #     na desce rampy). Ma być zasłaniany przez to, co stoi przed nim, bo
 #     inaczej przenika przez budynki.
 #
-#  2. PLAKIETKA — etykieta UNOSZĄCA SIĘ nad obiektem (imię NPC, kurs dnia).
+#  2. PLAKIETKA - etykieta UNOSZĄCA SIĘ nad obiektem (imię NPC, kurs dnia).
 #     Musi być czytelna z każdej strony. Tu wcześniej był błąd: plakietki
 #     robiono jak szyldy, więc obracający się billboard wjeżdżał rogami
 #     w ścianę za sobą i połowa liter znikała. Widać to było najlepiej nad
-#     Zdziśkiem — tekst dało się przeczytać tylko stojąc dokładnie na wprost.
+#     Zdziśkiem - tekst dało się przeczytać tylko stojąc dokładnie na wprost.
 #     Lekarstwo: no_depth_test (rysuj zawsze na wierzchu) + obwódka, żeby
 #     jasne litery nie ginęły na jasnym tle.
 
-## Napis namalowany na obiekcie — normalnie zasłaniany przez geometrię.
+## Napis namalowany na obiekcie - normalnie zasłaniany przez geometrię.
 static func szyld(tekst: String, rozmiar: int, kolor: Color) -> Label3D:
 	var napis := Label3D.new()
 	napis.text = tekst
 	napis.font_size = rozmiar
 	napis.pixel_size = 0.004
 	napis.modulate = kolor
-	# Cienka ciemna obwódka — bez niej jasny napis na jasnej ścianie znika
+	# Cienka ciemna obwódka - bez niej jasny napis na jasnej ścianie znika
 	napis.outline_size = maxi(4, rozmiar / 12)
 	napis.outline_modulate = Color(0.06, 0.05, 0.08, 0.9)
 	return napis
 
-## Etykieta unosząca się nad obiektem — zawsze zwrócona do kamery
+## Etykieta unosząca się nad obiektem - zawsze zwrócona do kamery
 ## i zawsze czytelna, nawet gdy za nią stoi ściana.
 static func plakietka(tekst: String, rozmiar: int, kolor: Color) -> Label3D:
 	var napis := szyld(tekst, rozmiar, kolor)

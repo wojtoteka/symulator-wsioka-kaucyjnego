@@ -1,13 +1,13 @@
 extends Node
-## ZLECENIA OSIEDLOWE (autoload "Zlecenia") — data-driven system misji.
+## ZLECENIA OSIEDLOWE (autoload "Zlecenia") - data-driven system misji.
 ##
-## Definicje mieszkają w res://data/zlecenia.json — dopisanie nowej misji
+## Definicje mieszkają w res://data/zlecenia.json - dopisanie nowej misji
 ## NIE wymaga dotykania kodu. Jeśli pliku brak (albo ma literówkę), wchodzi
 ## awaryjny zestaw z ZAPASOWE, żeby gra nigdy nie została bez zleceń.
 ##
 ## Przepływ: tablica ogłoszeń pokazuje ofertę -> gracz przyjmuje (E) ->
 ## gra zgłasza zdarzenia przez Zlecenia.zglos("zebrano_szklo") ->
-## po osiągnięciu celu leci nagroda; po przekroczeniu czasu — porażka.
+## po osiągnięciu celu leci nagroda; po przekroczeniu czasu - porażka.
 
 signal oferta_zmieniona(dane: Dictionary)      # tablica pokazuje inne zlecenie
 signal zlecenie_przyjete(dane: Dictionary)
@@ -39,7 +39,7 @@ func _ready() -> void:
 	_wczytaj_definicje()
 	losuj_oferty()
 
-## Wczytanie definicji z JSON-a. Błędy nie wywalają gry — jest fallback.
+## Wczytanie definicji z JSON-a. Błędy nie wywalają gry - jest fallback.
 func _wczytaj_definicje() -> void:
 	definicje = []
 	if FileAccess.file_exists(SCIEZKA_DANYCH):
@@ -51,10 +51,10 @@ func _wczytaj_definicje() -> void:
 					if _poprawne(pozycja):
 						definicje.append(pozycja)
 	if definicje.is_empty():
-		push_warning("Zlecenia: brak poprawnych danych w %s — wchodzą zapasowe." % SCIEZKA_DANYCH)
+		push_warning("Zlecenia: brak poprawnych danych w %s - wchodzą zapasowe." % SCIEZKA_DANYCH)
 		definicje = ZAPASOWE.duplicate(true)
 
-## Walidacja pojedynczej definicji — brak pola = zlecenie pomijane.
+## Walidacja pojedynczej definicji - brak pola = zlecenie pomijane.
 func _poprawne(pozycja: Variant) -> bool:
 	if not pozycja is Dictionary:
 		return false
@@ -80,7 +80,7 @@ func biezaca_oferta() -> Dictionary:
 		return {}
 	return oferty[_indeks_oferty % oferty.size()]
 
-## Przewinięcie kartki na tablicy (gracz wali w nią pięścią — działa).
+## Przewinięcie kartki na tablicy (gracz wali w nią pięścią - działa).
 func nastepna_oferta() -> void:
 	if oferty.size() <= 1:
 		return
@@ -113,7 +113,7 @@ func przyjmij(dane: Dictionary) -> bool:
 	Sfx.graj("sklep")
 	return true
 
-## Rezygnacja (bez kary — osiedle wybacza).
+## Rezygnacja (bez kary - osiedle wybacza).
 func porzuc() -> void:
 	if not czy_aktywne():
 		return
@@ -185,7 +185,7 @@ func _dane_hud() -> Dictionary:
 		"zleceniodawca": str(aktywne.get("zleceniodawca", "Osiedle")),
 	}
 
-## Reset przy nowym dniu — nowe kartki na tablicy.
+## Reset przy nowym dniu - nowe kartki na tablicy.
 func nowy_dzien() -> void:
 	aktywne = {}
 	losuj_oferty()

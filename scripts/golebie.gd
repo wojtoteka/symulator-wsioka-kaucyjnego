@@ -1,6 +1,6 @@
 extends Node3D
-## GOŁĘBIE — stadko dziobie na chodniku.
-## Podbiegasz — odlatują z furkotem i lądują gdzie indziej.
+## GOŁĘBIE - stadko dziobie na chodniku.
+## Podbiegasz - odlatują z furkotem i lądują gdzie indziej.
 ## Czasem któryś zostawi "prezent". Taki osiedlowy chrzest.
 
 const ILE := 6
@@ -17,13 +17,13 @@ func _ready() -> void:
 	if gracze.size() > 0:
 		_gracz = gracze[0]
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
 func _stworz_golebia() -> void:
 	var ptak := Node3D.new()
-	# Tułów — szara kulka
+	# Tułów - szara kulka
 	var tulow := MeshInstance3D.new()
 	var kula := SphereMesh.new()
 	kula.radius = 0.12

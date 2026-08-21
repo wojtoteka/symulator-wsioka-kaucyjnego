@@ -1,7 +1,7 @@
 extends StaticBody3D
-## SKUP ZŁOMU "U ZDZIŚKA" — buda z blachy falistej za działkami.
+## SKUP ZŁOMU "U ZDZIŚKA" - buda z blachy falistej za działkami.
 ## Tu (i tylko tu) sprzedasz kabel, blachę, felgę i akumulator.
-## Kurs zmienia się codziennie, a Zdzisiek zamyka przed końcem dnia —
+## Kurs zmienia się codziennie, a Zdzisiek zamyka przed końcem dnia -
 ## kto nie zdąży, ten wraca do domu z felgą w plecaku i pustym portfelem.
 
 const TEKSTY_ZDZISKA: Array[String] = [
@@ -15,7 +15,7 @@ const TEKSTY_ZDZISKA: Array[String] = [
 var _tabliczka: Label3D          # kurs dnia nad budą
 var _lampa: MeshInstance3D       # świeci gdy otwarte, gaśnie po zamknięciu
 var _material_lampy: StandardMaterial3D
-var _waga: Node3D                # platforma wagi — ugina się przy ważeniu
+var _waga: Node3D                # platforma wagi - ugina się przy ważeniu
 var _zajety := false
 var _odliczanie_gadania := 0.0
 
@@ -30,7 +30,7 @@ func _ready() -> void:
 func nazwa_celu() -> String:
 	return "skup"
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color, emisja := false) -> StandardMaterial3D:
 	return Styl.bryla(kolor, Styl.KONTUR_OBIEKT, emisja)
 
@@ -49,7 +49,7 @@ func _zbuduj_bryle() -> void:
 	_pudlo(self, Vector3(0, 1.4, 0), Vector3(5.0, 2.8, 3.6), Color(0.55, 0.5, 0.42))
 	for i in 9:
 		_pudlo(self, Vector3(-2.2 + i * 0.55, 1.4, 1.83), Vector3(0.12, 2.8, 0.1), Color(0.44, 0.4, 0.34))
-	# Dach ze spadkiem — rdzawa blacha
+	# Dach ze spadkiem - rdzawa blacha
 	var dach := _pudlo(self, Vector3(0, 2.95, 0), Vector3(5.4, 0.16, 4.0), Color(0.48, 0.28, 0.16))
 	dach.rotation.x = -0.06
 
@@ -77,7 +77,7 @@ func _zbuduj_bryle() -> void:
 	glowa.material_override = _material(Paleta.SKORA)
 	glowa.position = Vector3(0, 1.85, 0)
 	zdzisiek.add_child(glowa)
-	# Wąs — znak rozpoznawczy branży
+	# Wąs - znak rozpoznawczy branży
 	_pudlo(zdzisiek, Vector3(0, 1.78, 0.2), Vector3(0.26, 0.06, 0.06), Color(0.3, 0.25, 0.2))
 	# Czapka z daszkiem
 	var czapka := _pudlo(zdzisiek, Vector3(0, 2.03, 0), Vector3(0.5, 0.14, 0.5), Color(0.2, 0.3, 0.22))
@@ -101,27 +101,27 @@ func _zbuduj_bryle() -> void:
 	var szyld := _pudlo(self, Vector3(0, 3.55, 1.6), Vector3(4.6, 1.0, 0.12), Color(0.75, 0.15, 0.12))
 	szyld.rotation.x = -0.04
 	# Ten napis jest namalowany na szyldzie, więc ma się chować za budą,
-	# gdy patrzymy od tyłu — inaczej przenikałby przez blachę.
+	# gdy patrzymy od tyłu - inaczej przenikałby przez blachę.
 	var napis := Styl.szyld("SKUP ZŁOMU", 110, Color(1, 0.95, 0.5))
 	napis.position = Vector3(0, 3.62, 1.72)
 	add_child(napis)
 
 	# --- Tabliczka z kursem dnia (aktualizowana z Game) ---
-	# Kurs to informacja dla gracza, nie element budynku — musi być czytelny
+	# Kurs to informacja dla gracza, nie element budynku - musi być czytelny
 	# z dowolnego miejsca placu, także zza sterty złomu.
 	# Wisi Z BOKU okienka, nie nad nim: nad okienkiem wpadała dokładnie na
 	# plakietkę "ZDZISIEK" i oba napisy nakładały się na siebie.
 	_tabliczka = Styl.plakietka("", 40, Color(0.85, 1.0, 0.85))
 	_tabliczka.position = Vector3(-1.72, 1.72, 1.95)
 	_tabliczka.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Kurs to zdanie ("CZYNNE — kurs 107% — dziś płacą przyzwoicie"), a nie
+	# Kurs to zdanie ("CZYNNE - kurs 107% - dziś płacą przyzwoicie"), a nie
 	# jedno słowo: bez łamania rozlewał się na kilka metrów w bok, daleko
-	# poza deskę, na której niby wisi. 320 * pixel_size ≈ 1,3 m — czyli tyle,
+	# poza deskę, na której niby wisi. 320 * pixel_size ≈ 1,3 m - czyli tyle,
 	# ile ma deska.
 	_tabliczka.width = 320
 	_tabliczka.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_tabliczka)
-	# Deska, na której tabliczka "wisi" — bez niej napis dyndałby w powietrzu
+	# Deska, na której tabliczka "wisi" - bez niej napis dyndałby w powietrzu
 	_pudlo(self, Vector3(-1.72, 1.72, 1.86), Vector3(1.5, 0.85, 0.08), Color(0.3, 0.29, 0.26))
 
 	# --- Lampa nad okienkiem: świeci = otwarte ---
@@ -145,7 +145,7 @@ func _zbuduj_bryle() -> void:
 		element.rotation.y = kat
 		element.rotation.z = randf_range(-0.2, 0.2)
 
-	# --- Kolizja budy (waga i sterta są przechodnie — mniej zaczepiania) ---
+	# --- Kolizja budy (waga i sterta są przechodnie - mniej zaczepiania) ---
 	var kolizja := CollisionShape3D.new()
 	var ksztalt := BoxShape3D.new()
 	ksztalt.size = Vector3(5.0, 2.8, 3.6)
@@ -166,13 +166,13 @@ func _process(delta: float) -> void:
 
 func _odswiez_tabliczke() -> void:
 	if Game.skup_otwarty:
-		_tabliczka.text = "CZYNNE — %s" % Game.opis_kursu()
+		_tabliczka.text = "CZYNNE - %s" % Game.opis_kursu()
 		_tabliczka.modulate = Color(0.8, 1.0, 0.8)
 	else:
 		_tabliczka.text = "ZAMKNIĘTE\n(Zdzisiek poszedł na piwo)"
 		_tabliczka.modulate = Color(1.0, 0.6, 0.6)
 
-## Reakcja na zamknięcie skupu — gaśnie lampa, zmienia się tabliczka.
+## Reakcja na zamknięcie skupu - gaśnie lampa, zmienia się tabliczka.
 func _na_zmiane_statusu(otwarty: bool) -> void:
 	_odswiez_tabliczke()
 	var kolor := Color(0.4, 1.0, 0.45) if otwarty else Color(0.35, 0.1, 0.1)
@@ -183,10 +183,10 @@ func _na_zmiane_statusu(otwarty: bool) -> void:
 func podpowiedz() -> String:
 	var zlom := Game.ile_w_plecaku("zlom")
 	if not Game.skup_otwarty:
-		return "SKUP ZAMKNIĘTY — Zdzisiek skończył na dziś"
+		return "SKUP ZAMKNIĘTY - Zdzisiek skończył na dziś"
 	if zlom == 0:
-		return "Skup Złomu — %s (przynieś złom!)" % Game.opis_kursu()
-	return "E — sprzedaj złom (%d szt., kurs %d%%)" % [zlom, roundi(Game.kurs_zlomu * 100)]
+		return "Skup Złomu - %s (przynieś złom!)" % Game.opis_kursu()
+	return "E - sprzedaj złom (%d szt., kurs %d%%)" % [zlom, roundi(Game.kurs_zlomu * 100)]
 
 func interakcja(_gracz: Node3D) -> void:
 	if _zajety:
@@ -207,7 +207,7 @@ func interakcja(_gracz: Node3D) -> void:
 	if not is_inside_tree():
 		_zajety = false
 		return
-	# Płacimy wg kursu dnia — czasem żniwa, czasem kryzys
+	# Płacimy wg kursu dnia - czasem żniwa, czasem kryzys
 	var wynik: Dictionary = Game.oddaj_kategorie("zlom", Game.kurs_zlomu)
 	_zajety = false
 	Sfx.graj("kasa")

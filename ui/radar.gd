@@ -1,5 +1,5 @@
 extends Control
-## RADAR OSIEDLOWY — minimapa w prawym dolnym rogu.
+## RADAR OSIEDLOWY - minimapa w prawym dolnym rogu.
 ## Obraca się razem z graczem (góra ekranu = kierunek patrzenia), pokazuje
 ## fanty, złom, punkty skupu i straż miejską. Rysowany w całości w _draw(),
 ## więc nie kosztuje ani jednego dodatkowego renderu 3D.
@@ -8,8 +8,8 @@ const PROMIEN := 82.0          # promień radaru w pikselach
 const ZASIEG := 46.0           # ile metrów świata mieści się na radarze
 const ODSWIEZANIE := 0.12      # co ile sekund przebudowujemy listę obiektów
 
-# Kolory kropek — spójne z tym, co gracz widzi w świecie
-# Tło musi być mocno kryjące — przy 0.72 cienie budynków prześwitywały
+# Kolory kropek - spójne z tym, co gracz widzi w świecie
+# Tło musi być mocno kryjące - przy 0.72 cienie budynków prześwitywały
 # przez tarczę i wyglądały jak czarne plamy na radarze
 const KOLOR_TLA := Color(0.04, 0.07, 0.1, 0.9)
 const KOLOR_OBWODU := Color(1.0, 0.85, 0.3, 0.55)
@@ -42,13 +42,13 @@ func _znajdz_gracza() -> void:
 	_gracz = gracze[0] if gracze.size() > 0 else null
 
 func _process(delta: float) -> void:
-	# W menu głównym i po zakończeniu dnia radar znika — nie zasłania panelu
+	# W menu głównym i po zakończeniu dnia radar znika - nie zasłania panelu
 	visible = not Game.w_menu and Game.gra_trwa
 	if not visible:
 		return
 	if not is_instance_valid(_gracz):
 		_znajdz_gracza()
-	# Listę obiektów odświeżamy kilka razy na sekundę — co klatkę byłoby
+	# Listę obiektów odświeżamy kilka razy na sekundę - co klatkę byłoby
 	# marnotrawstwem, a i tak nikt tego nie zauważy
 	_odliczanie -= delta
 	if _odliczanie <= 0.0:
@@ -74,7 +74,7 @@ func _draw() -> void:
 	var yaw: float = _gracz.global_rotation.y
 	var pozycja_gracza: Vector3 = _gracz.global_position
 
-	# Obiekty — kolejność rysowania od najmniej do najważniejszych
+	# Obiekty - kolejność rysowania od najmniej do najważniejszych
 	for auto in _auta:
 		_kropka(srodek, pozycja_gracza, yaw, auto.global_position, KOLOR_AUTA, 2.5)
 	for fant in _fanty:
@@ -82,7 +82,7 @@ func _draw() -> void:
 			continue
 		var kolor := KOLOR_FANTU
 		var rozmiar := 2.6
-		# Rozróżniamy typy — złote i złom mają własne kolory
+		# Rozróżniamy typy - złote i złom mają własne kolory
 		var typ_fantu: int = fant.typ if "typ" in fant else -1
 		if typ_fantu >= 0:
 			if fant.kategoria(typ_fantu) == "zlom":
@@ -98,7 +98,7 @@ func _draw() -> void:
 		if is_instance_valid(straznik):
 			_kropka(srodek, pozycja_gracza, yaw, straznik.global_position, KOLOR_STRAZY, 4.0, true)
 
-	# Gracz — trójkąt zawsze skierowany w górę tarczy
+	# Gracz - trójkąt zawsze skierowany w górę tarczy
 	var strzalka := PackedVector2Array([
 		srodek + Vector2(0, -7), srodek + Vector2(-5, 5), srodek + Vector2(5, 5),
 	])
@@ -112,7 +112,7 @@ func _draw() -> void:
 func _kropka(srodek: Vector2, skad: Vector3, yaw: float, dokad: Vector3,
 		kolor: Color, rozmiar: float, obwodka := false) -> void:
 	var roznica := dokad - skad
-	# Obrót do układu gracza liczy Kompas — wspólnie ze strzałką nawigacji.
+	# Obrót do układu gracza liczy Kompas - wspólnie ze strzałką nawigacji.
 	# Wcześniej był tu obrót o -yaw i radar wychodził odwrócony: przy yaw=0
 	# zgadzał się przypadkiem, ale po obróceniu postaci kropki jechały
 	# w przeciwną stronę, niż szedł gracz.

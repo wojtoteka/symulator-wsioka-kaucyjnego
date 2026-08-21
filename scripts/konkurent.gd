@@ -1,7 +1,7 @@
 extends CharacterBody3D
-## KONKURENT-WSIOK "HENIEK" — chodzi po mapie do najbliższych butelek
+## KONKURENT-WSIOK "HENIEK" - chodzi po mapie do najbliższych butelek
 ## i je zabiera. Wymusza pośpiech! Na szczęście jest wolniejszy od gracza
-## i lubi sobie odpocząć. Złotych fantów "nie poznaje" — zostawia je.
+## i lubi sobie odpocząć. Złotych fantów "nie poznaje" - zostawia je.
 
 const Kolekcjonerski := preload("res://scripts/collectible.gd")
 
@@ -12,19 +12,19 @@ var predkosc := Balans.PREDKOSC_HENKA
 
 const TEKSTY_KRADZIEZY: Array[String] = [
 	"Heniek zwinął butelkę sprzed nosa!",
-	"Konkurencja nie śpi — Heniek znowu szybszy.",
+	"Konkurencja nie śpi - Heniek znowu szybszy.",
 	"Heniek: \"Kto pierwszy, ten lepszy, młody!\"",
 	"Heniek pakuje TWOJĄ butelkę do swojej siaty.",
 ]
 
 var grawitacja: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _cel: Node3D = null        # butelka, do której idzie
-var _odpoczynek := 3.0         # start z małym opóźnieniem — fory dla gracza
+var _odpoczynek := 3.0         # start z małym opóźnieniem - fory dla gracza
 var _czas_w_miejscu := 0.0     # wykrywanie utknięcia na przeszkodzie
 var _zbiera := false
 
 func _ready() -> void:
-	add_to_group("bijalne")   # można mu przywalić (F) — czasem oddaje
+	add_to_group("bijalne")   # można mu przywalić (F) - czasem oddaje
 	predkosc = Balans.PREDKOSC_HENKA + minf(0.15 * (Game.dzien - 1), 1.2)
 	_zbuduj_postac()
 	# Kolizja
@@ -36,12 +36,12 @@ func _ready() -> void:
 	kolizja.position = Vector3(0, 0.9, 0)
 	add_child(kolizja)
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
 func _zbuduj_postac() -> void:
-	# Bordowy dres — konkurencyjna szkoła wsiokowania
+	# Bordowy dres - konkurencyjna szkoła wsiokowania
 	var tulow := MeshInstance3D.new()
 	var kapsula := CapsuleMesh.new()
 	kapsula.radius = 0.35
@@ -74,7 +74,7 @@ func _zbuduj_postac() -> void:
 	siata.material_override = _material(Color(0.9, 0.9, 0.95))
 	siata.position = Vector3(0.4, 0.5, 0)
 	add_child(siata)
-	# Imię nad głową — niech gracz wie, kto go okrada
+	# Imię nad głową - niech gracz wie, kto go okrada
 	var imie := Styl.plakietka("Heniek", 64, Color(1.0, 0.6, 0.6))
 	imie.position = Vector3(0, 2.2, 0)
 	add_child(imie)
@@ -98,7 +98,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_cel):
 		_cel = _znajdz_cel()
 		if not _cel:
-			_odpoczynek = 2.0   # brak butelek — czekamy
+			_odpoczynek = 2.0   # brak butelek - czekamy
 			return
 	# Idziemy do celu
 	var kierunek := _cel.global_position - global_position
@@ -112,7 +112,7 @@ func _physics_process(delta: float) -> void:
 	# Obrót w stronę marszu
 	look_at(global_position + kierunek, Vector3.UP)
 	move_and_slide()
-	# Wykrywanie utknięcia (np. na kontenerze) — po 2 s zmieniamy cel
+	# Wykrywanie utknięcia (np. na kontenerze) - po 2 s zmieniamy cel
 	if Vector2(velocity.x, velocity.z).length() < 0.5:
 		_czas_w_miejscu += delta
 		if _czas_w_miejscu > 2.0:
@@ -122,7 +122,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_czas_w_miejscu = 0.0
 
-## Najbliższa butelka na mapie (złote ignoruje — "nie poznał się na złocie").
+## Najbliższa butelka na mapie (złote ignoruje - "nie poznał się na złocie").
 func _znajdz_cel() -> Node3D:
 	var najlepszy: Node3D = null
 	var najmniejszy_dystans := INF
@@ -151,7 +151,7 @@ func _zbierz_cel() -> void:
 func _zakoncz_zbieranie() -> void:
 	_zbiera = false
 	if is_instance_valid(_cel) and _cel.zabierz_przez_konkurenta():
-		# Nie spamujemy — komunikat tylko czasami
+		# Nie spamujemy - komunikat tylko czasami
 		if randf() < 0.35:
 			Game.pokaz_komunikat(TEKSTY_KRADZIEZY.pick_random())
 	_cel = null

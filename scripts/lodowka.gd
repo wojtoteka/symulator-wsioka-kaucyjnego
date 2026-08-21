@@ -1,7 +1,7 @@
 extends StaticBody3D
 ## LODÓWKA Z PIWEM w Biedronce. E = kupujesz piwo za 4 zł:
 ## pełny "Papieros", chwilowa odwaga, chwiejna kamera...
-## a pusta butelka trafia do plecaka (0,50 zł kaucji — ekonomia!).
+## a pusta butelka trafia do plecaka (0,50 zł kaucji - ekonomia!).
 
 const CENA_PIWA := Balans.CENA_PIWA
 
@@ -9,7 +9,7 @@ func _ready() -> void:
 	add_to_group("interakcja")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color, emisja := false) -> StandardMaterial3D:
 	return Styl.bryla(kolor, Styl.KONTUR_OBIEKT, emisja)
 
@@ -55,7 +55,7 @@ func _zbuduj_bryle() -> void:
 	add_child(kolizja)
 
 func podpowiedz() -> String:
-	return "E — kup piwo (%s)" % Game.zl(CENA_PIWA)
+	return "E - kup piwo (%s)" % Game.zl(CENA_PIWA)
 
 func interakcja(gracz: Node3D) -> void:
 	if not Game.wydaj_kase(CENA_PIWA):
@@ -64,8 +64,8 @@ func interakcja(gracz: Node3D) -> void:
 		return
 	Sfx.graj("kasa")
 	gracz.wypij_piwo()
-	# Butelka po piwie od razu do plecaka — obieg zamknięty
+	# Butelka po piwie od razu do plecaka - obieg zamknięty
 	if Game.dodaj_przedmiot_bez_combo("butelka po piwie", Balans.KAUCJA_PO_PIWIE):
 		Game.pokaz_komunikat("Butelka po piwie do plecaka. Gospodarka obiegu zamkniętego!")
 	else:
-		Game.pokaz_komunikat("Plecak pełny — butelka po piwie została na półce. Ktoś się ucieszy.")
+		Game.pokaz_komunikat("Plecak pełny - butelka po piwie została na półce. Ktoś się ucieszy.")

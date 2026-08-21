@@ -1,5 +1,5 @@
 class_name Balans
-## BALANS GRY — wszystkie "magiczne liczby" w jednym miejscu.
+## BALANS GRY - wszystkie "magiczne liczby" w jednym miejscu.
 ## Chcesz łatwiejszą/trudniejszą grę? Zmieniaj tutaj, nie w logice.
 
 # --- Runda ---
@@ -66,7 +66,7 @@ const PROG_PUSZKA := 0.34
 const PROG_SZKLO := 0.54           # powyżej: plastik
 
 # --- Wydarzenia losowe ---
-# Butelkomat zapycha się często — to ma wnerwiać, ale nie blokować.
+# Butelkomat zapycha się często - to ma wnerwiać, ale nie blokować.
 # Kopniak odtyka w 70% prób, więc awaria kosztuje kilka sekund i jeden
 # przycisk, a nie utratę łupu. Przy podnoszeniu ZAPCHANIA nie ruszać
 # ODETKANIA w dół: dopiero oba naraz robią z automatu ścianę.
@@ -131,7 +131,7 @@ const LOT_BONUS_ZA_SEKUNDE := 6.0  # zł za sekundę lotu (styl się opłaca)
 const LOT_MIN_CZAS := 0.45         # od tylu sekund lot liczy się jako TRICK
 # DZIENNY LIMIT kasy z akrobacji. Bez niego skuter + rampa to była maszynka
 # do pieniędzy: skok co trzy sekundy, w kółko, do końca dnia. Po wyczerpaniu
-# limitu triki nadal dają prestiż i napisy — po prostu przestają płacić.
+# limitu triki nadal dają prestiż i napisy - po prostu przestają płacić.
 const LOT_LIMIT_DZIENNY := 20.0
 const LOT_ODSTEP := 2.5            # sekundy między płatnymi trikami
 
@@ -146,7 +146,7 @@ const PREDKOSC_HENKA := 3.2
 const ILE_AUT := 8                 # auta na obwodnicy (pętla ma ~280 m)
 ## Warstwa kolizji dla brył, które mają zatrzymywać WYŁĄCZNIE wysięgnik kamery.
 ## Korony drzew miały kolizję tylko na pniu, więc kamera TPP wjeżdżała
-## w liście — a że bryły mają kontur rysowany od środka (patrz Styl), ekran
+## w liście - a że bryły mają kontur rysowany od środka (patrz Styl), ekran
 ## robił się wtedy czarny. Gracza korona nadal nie blokuje.
 const WARSTWA_KAMERY := 4          # warstwa 3 w edytorze (bit o wartości 4)
 

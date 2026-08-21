@@ -1,9 +1,9 @@
 extends StaticBody3D
-## AUTOMAT Z NAPOJAMI — stoi przy wejściu do Biedronki, obok butelkomatu.
+## AUTOMAT Z NAPOJAMI - stoi przy wejściu do Biedronki, obok butelkomatu.
 ## Drugie (po lodówce z piwem) miejsce, gdzie można przepuścić zarobioną kaucję,
 ## tym razem na coś, co realnie pomaga w robocie zamiast utrudniać.
 ##
-## E — kup wybraną pozycję, F — przełącz na następną.
+## E - kup wybraną pozycję, F - przełącz na następną.
 ## Każdy napój zostawia PUSTĄ PUSZKĘ w plecaku: automat sam się karmi kaucją.
 
 ## Nie "const": stała w GDScript musi dać się policzyć w czasie kompilacji,
@@ -61,7 +61,7 @@ func _pudlo(pozycja: Vector3, rozmiar: Vector3, kolor: Color, emisja := false) -
 	return mesh
 
 func _zbuduj_bryle() -> void:
-	# Korpus — blaszana szafa w firmowej czerwieni
+	# Korpus - blaszana szafa w firmowej czerwieni
 	_pudlo(Vector3(0, 0.95, 0), Vector3(1.1, 1.9, 0.7), Color(0.7, 0.14, 0.14))
 	# Szyba z "towarem": rzędy kolorowych puszek za ciemnym szkłem
 	_pudlo(Vector3(-0.16, 1.15, 0.36), Vector3(0.66, 1.0, 0.04), Color(0.1, 0.13, 0.16))
@@ -101,17 +101,17 @@ func _zbuduj_bryle() -> void:
 
 func _odswiez() -> void:
 	var pozycja: Dictionary = TOWAR[_wybor]
-	_etykieta.text = "%s — %s" % [pozycja["nazwa"], Game.zl(pozycja["cena"])]
+	_etykieta.text = "%s - %s" % [pozycja["nazwa"], Game.zl(pozycja["cena"])]
 	_material_lampki.albedo_color = pozycja["kolor"]
 	_material_lampki.emission = pozycja["kolor"]
 
 func podpowiedz() -> String:
 	var pozycja: Dictionary = TOWAR[_wybor]
-	return "E — %s (%s, %s)  |  F — następny" % [
+	return "E - %s (%s, %s)  |  F - następny" % [
 		pozycja["nazwa"], Game.zl(pozycja["cena"]), pozycja["opis"],
 	]
 
-## F — przełączenie towaru. Automat jest w grupie "bijalne", więc trafia tu
+## F - przełączenie towaru. Automat jest w grupie "bijalne", więc trafia tu
 ## to samo wciśnięcie, którym gracz "zwraca uwagę" Heńkowi.
 func oberwij(_gracz: Node3D) -> void:
 	_wybor = (_wybor + 1) % TOWAR.size()
@@ -132,7 +132,7 @@ func interakcja(gracz: Node3D) -> void:
 		"kawa z automatu": gracz.zjedz_batona()   # kawa też stawia na nogi
 		"baton": gracz.zjedz_batona()
 		"woda": gracz.wypij_wode()
-	# Opakowanie zostaje graczowi — to wciąż gra o kaucji
+	# Opakowanie zostaje graczowi - to wciąż gra o kaucji
 	var pusta := str(pozycja["pusta"])
 	if pusta != "" and float(pozycja["kaucja"]) > 0.0:
 		if Game.dodaj_przedmiot_bez_combo(pusta, pozycja["kaucja"]):

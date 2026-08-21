@@ -1,8 +1,8 @@
 extends Control
-## MOTION LINES — kreski pędu przy krawędziach ekranu.
+## MOTION LINES - kreski pędu przy krawędziach ekranu.
 ## Im szybciej gracz jedzie, tym gęstsze i dłuższe. Wjeżdżają dopiero
 ## powyżej prędkości biegu, żeby zwykłe chodzenie nie migotało.
-## Rysowane w _draw() — zero kosztu, gdy stoimy w miejscu.
+## Rysowane w _draw() - zero kosztu, gdy stoimy w miejscu.
 
 const PROG_PREDKOSCI := 7.0     # od tylu m/s zaczynają się pojawiać
 const PELNA_PREDKOSC := 17.0    # przy tej prędkości efekt jest maksymalny
@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 		return
 	var predkosc := Vector2(_gracz.velocity.x, _gracz.velocity.z).length()
 	var cel := clampf((predkosc - PROG_PREDKOSCI) / (PELNA_PREDKOSC - PROG_PREDKOSCI), 0.0, 1.0)
-	# Drift dorzuca swoje — bokiem zawsze wygląda szybciej niż jest
+	# Drift dorzuca swoje - bokiem zawsze wygląda szybciej niż jest
 	if "_drift" in _gracz and _gracz._drift:
 		cel = maxf(cel, 0.55)
 	var poprzednia := _sila
@@ -49,7 +49,7 @@ func _draw() -> void:
 	for i in ILE_KRESEK:
 		var kat := (float(i) / ILE_KRESEK) * TAU + _losowe[i] * 0.22
 		var kierunek := Vector2(cos(kat), sin(kat))
-		# Środek ekranu zostaje czysty — kreski tylko przy brzegach
+		# Środek ekranu zostaje czysty - kreski tylko przy brzegach
 		var poczatek := srodek + kierunek * (maks_promien * (0.62 - 0.12 * _sila))
 		var dlugosc := maks_promien * (0.1 + 0.28 * _sila) * (0.6 + _losowe[i] * 0.8)
 		var koniec := poczatek + kierunek * dlugosc

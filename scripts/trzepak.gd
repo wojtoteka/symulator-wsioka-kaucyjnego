@@ -1,5 +1,5 @@
 extends Area3D
-## TRZEPAK — legendarna siłownia osiedlowa. E = seria podciągnięć
+## TRZEPAK - legendarna siłownia osiedlowa. E = seria podciągnięć
 ## (pełna regeneracja Papierosa i +10 do Wsiokometru).
 
 const WYSOKOSC_DRAZKA := 2.4
@@ -14,7 +14,7 @@ func _ready() -> void:
 	add_child(ksztalt)
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -43,7 +43,7 @@ func _zbuduj_bryle() -> void:
 	add_child(poprzeczka)
 
 func podpowiedz() -> String:
-	return "E — podciągnij się na trzepaku"
+	return "E - podciągnij się na trzepaku"
 
 func interakcja(gracz: Node3D) -> void:
 	gracz.podciagnij_sie(global_position + Vector3(0, WYSOKOSC_DRAZKA, 0))

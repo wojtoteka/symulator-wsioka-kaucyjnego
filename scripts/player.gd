@@ -1,5 +1,5 @@
 extends CharacterBody3D
-## GRACZ — "wsiok kaucyjny".
+## GRACZ - "wsiok kaucyjny".
 ## Ruch WASD, skok (spacja), przysiad (Ctrl), sprint (Shift, zużywa "Papierosa"),
 ## interakcja (E), kamera TPP/FPP (V).
 ## Dodatkowo: komiczne potknięcia o kamienie i jazda wózkiem sklepowym.
@@ -8,7 +8,7 @@ extends CharacterBody3D
 const CZULOSC_MYSZY := 0.003
 const ZASIEG_INTERAKCJI := 2.4
 
-# Wartości ruchu i staminy — patrz scripts/balans.gd
+# Wartości ruchu i staminy - patrz scripts/balans.gd
 const PREDKOSC_CHODU := Balans.PREDKOSC_CHODU
 const PREDKOSC_SPRINTU := Balans.PREDKOSC_SPRINTU
 const PREDKOSC_KUCANIA := Balans.PREDKOSC_KUCANIA
@@ -42,13 +42,13 @@ var _drift := false               # czy właśnie idziemy bokiem
 var _drift_dzwiek := 0.0          # odliczanie zgrzytu opon
 var _czas_lotu := 0.0             # ile sekund w powietrzu (bonus za trick)
 var _auto_zbieranie := 0.0        # timer automatycznego zbierania z wózka
-var _reka_l: Node3D               # barki — do machania rękami
+var _reka_l: Node3D               # barki - do machania rękami
 var _reka_p: Node3D
-var _noga_l: Node3D               # biodra — do animacji nóg
+var _noga_l: Node3D               # biodra - do animacji nóg
 var _noga_p: Node3D
 var _faza_kroku := 0.0            # faza animacji chodu
 var _piwo := 0.0                  # sekundy upojenia (kumuluje się z każdym piwem!)
-var _piwa_wypite := 0             # licznik piw w tej "sesji" — im więcej, tym gorzej
+var _piwa_wypite := 0             # licznik piw w tej "sesji" - im więcej, tym gorzej
 var _kac := 0.0                   # sekundy kaca po zejściu upojenia
 var _energetyk := 0.0             # sekundy podkręcenia z energetyka (bez kaca)
 var _cwiczy := false              # true = podciąganie na trzepaku
@@ -71,7 +71,7 @@ func _ready() -> void:
 	_zbuduj_zasieg()
 	_zbuduj_wozek_wizual()
 	_zbuduj_skuter_wizual()
-	# W menu głównym mysz jest wolna — HUD ją przechwyci po starcie
+	# W menu głównym mysz jest wolna - HUD ją przechwyci po starcie
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Game.w_menu else Input.MOUSE_MODE_CAPTURED
 	# Plecak wizualnie puchnie, gdy zbieramy butelki
 	Game.backpack_changed.connect(_aktualizuj_plecak)
@@ -80,7 +80,7 @@ func _ready() -> void:
 
 # --- Budowanie wyglądu (proste bryły w stylu "dres i czapka") ---
 
-## Materiał w stylu gry (toon + gruby kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + gruby kontur) - patrz scripts/styl.gd.
 ## Gracz dostaje najgrubszą obwódkę: musi być czytelny na każdym tle.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
@@ -90,7 +90,7 @@ func _zbuduj_postac() -> void:
 	_wyglad.name = "Wyglad"
 	add_child(_wyglad)
 
-	# Tułów — granatowy dres (krótszy, bo od teraz mamy prawdziwe NOGI).
+	# Tułów - granatowy dres (krótszy, bo od teraz mamy prawdziwe NOGI).
 	# Po kupieniu ZŁOTEGO DRESU w MELINIE strój zmienia się na złoty.
 	var zloty: bool = int(Game.ulepszenia.get("dres", 0)) > 0
 	var tulow := MeshInstance3D.new()
@@ -98,7 +98,7 @@ func _zbuduj_postac() -> void:
 	kapsula.radius = 0.33
 	kapsula.height = 0.95
 	tulow.mesh = kapsula
-	# Złoty dres dostaje własny (nie współdzielony) materiał — inaczej
+	# Złoty dres dostaje własny (nie współdzielony) materiał - inaczej
 	# metaliczność przelałaby się na wszystko w tym samym kolorze
 	var mat_dresu := _material(Color(0.15, 0.2, 0.45))
 	if zloty:
@@ -109,7 +109,7 @@ func _zbuduj_postac() -> void:
 	tulow.position = Vector3(0, 1.0, 0)
 	_wyglad.add_child(tulow)
 
-	# Nogi — dresowe, machają przy chodzeniu (obrót w biodrze)
+	# Nogi - dresowe, machają przy chodzeniu (obrót w biodrze)
 	for strona in [-1.0, 1.0]:
 		var biodro := Node3D.new()
 		biodro.position = Vector3(strona * 0.16, 0.62, 0)
@@ -164,7 +164,7 @@ func _zbuduj_postac() -> void:
 	daszek.position = Vector3(0, 1.8, -0.3)  # -Z to przód postaci
 	_wyglad.add_child(daszek)
 
-	# Ręce — machają przy chodzeniu (obrót w barku)
+	# Ręce - machają przy chodzeniu (obrót w barku)
 	for strona in [-1.0, 1.0]:
 		var bark := Node3D.new()
 		bark.position = Vector3(strona * 0.44, 1.35, 0)
@@ -214,7 +214,7 @@ func _zbuduj_zasieg() -> void:
 	_zasieg.add_child(ksztalt)
 	_zasieg.position = Vector3(0, 1.0, 0)
 	add_child(_zasieg)
-	# Mała strefa przy stopach — wykrywa kamienie do potknięcia
+	# Mała strefa przy stopach - wykrywa kamienie do potknięcia
 	_stopy = Area3D.new()
 	var ksztalt_stop := CollisionShape3D.new()
 	var kula_stop := SphereShape3D.new()
@@ -224,7 +224,7 @@ func _zbuduj_zasieg() -> void:
 	_stopy.position = Vector3(0, 0.25, 0)
 	add_child(_stopy)
 
-## Kopia wózka doczepiona do gracza — pokazywana tylko podczas jazdy.
+## Kopia wózka doczepiona do gracza - pokazywana tylko podczas jazdy.
 func _zbuduj_wozek_wizual() -> void:
 	_wozek_wizual = Node3D.new()
 	_wozek_wizual.visible = false
@@ -258,7 +258,7 @@ func _zbuduj_wozek_wizual() -> void:
 		kolo.position = przesuniecie
 		_wozek_wizual.add_child(kolo)
 
-## Kopia skutera doczepiona do gracza — pokazywana tylko podczas jazdy.
+## Kopia skutera doczepiona do gracza - pokazywana tylko podczas jazdy.
 ## Gracz "siedzi" okrakiem: nogi po bokach, ręce na kierownicy.
 func _zbuduj_skuter_wizual() -> void:
 	_skuter_wizual = Node3D.new()
@@ -321,7 +321,7 @@ func _zbuduj_skuter_wizual() -> void:
 		kolo.rotation.z = PI / 2
 		kolo.position = przesuniecie
 		_skuter_wizual.add_child(kolo)
-	# Lusterko na patyku — bo bez lusterka to nie jest skuter
+	# Lusterko na patyku - bo bez lusterka to nie jest skuter
 	var lusterko := MeshInstance3D.new()
 	var pudlo_lusterka := BoxMesh.new()
 	pudlo_lusterka.size = Vector3(0.12, 0.08, 0.03)
@@ -345,7 +345,7 @@ func _unhandled_input(zdarzenie: InputEvent) -> void:
 			_ramie.rotation.x - ruch_myszy.relative.y * czulosc,
 			deg_to_rad(-75), limit_gory
 		)
-	# Klik — złap mysz z powrotem (Esc/pauzę obsługuje HUD)
+	# Klik - złap mysz z powrotem (Esc/pauzę obsługuje HUD)
 	var klik := zdarzenie as InputEventMouseButton
 	if klik and klik.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE \
 			and Game.gra_trwa and not get_tree().paused:
@@ -363,7 +363,7 @@ func _unhandled_input(zdarzenie: InputEvent) -> void:
 			wstan()
 		elif _najblizszy:
 			_najblizszy.interakcja(self)
-	# Nawalanie (F) — kultura osobista: poziom osiedle
+	# Nawalanie (F) - kultura osobista: poziom osiedle
 	if zdarzenie.is_action_pressed("punch") and Game.gra_trwa \
 			and not lezy and not w_wozku and not _cwiczy:
 		_uderz()
@@ -375,21 +375,21 @@ func _physics_process(delta: float) -> void:
 	_niesmiertelnosc = maxf(_niesmiertelnosc - delta, 0.0)
 
 	if not Game.gra_trwa or Game.w_menu:
-		# Menu / koniec dnia — postać stoi (dojeżdża tylko grawitacją)
+		# Menu / koniec dnia - postać stoi (dojeżdża tylko grawitacją)
 		velocity.x = 0
 		velocity.z = 0
 		move_and_slide()
 		return
 
 	if lezy:
-		# Leżymy po potknięciu — ślizgamy się siłą rozpędu, bez sterowania
+		# Leżymy po potknięciu - ślizgamy się siłą rozpędu, bez sterowania
 		velocity.x = move_toward(velocity.x, 0, 5.0 * delta * PREDKOSC_SPRINTU)
 		velocity.z = move_toward(velocity.z, 0, 5.0 * delta * PREDKOSC_SPRINTU)
 		move_and_slide()
 		return
 
 	if _cwiczy:
-		# Wisimy na trzepaku — pozycją steruje animacja podciągania
+		# Wisimy na trzepaku - pozycją steruje animacja podciągania
 		velocity = Vector3.ZERO
 		return
 
@@ -398,7 +398,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		papieros = minf(papieros + Balans.PAPIEROS_REGENERACJA * 2.0 * delta, 100.0)
 		Game.ustaw_stamine(papieros, papieros < 100.0)
-		Game.ustaw_prompt("E — wstań z ławki")
+		Game.ustaw_prompt("E - wstań z ławki")
 		# Ruch też podrywa z ławki
 		if Input.get_vector("move_left", "move_right", "move_forward", "move_back") != Vector2.ZERO:
 			wstan()
@@ -428,7 +428,7 @@ func _efekt_wstrzasu(delta: float) -> void:
 	_kamera.h_offset = randf_range(-1.0, 1.0) * _wstrzas
 	_kamera.v_offset = randf_range(-1.0, 1.0) * _wstrzas
 
-## Czy stoimy na betonie/asfalcie? (układ mapy — patrz world.gd)
+## Czy stoimy na betonie/asfalcie? (układ mapy - patrz world.gd)
 func _na_betonie() -> bool:
 	var p := global_position
 	if absf(p.x) <= 2.0 and p.z > -27.0 and p.z < 23.0:
@@ -446,7 +446,7 @@ func _fizyka_chodu(delta: float) -> void:
 		velocity.y = SILA_SKOKU
 		Sfx.graj("skok", -6.0)
 
-	# Przysiad (do zaglądania w śmietniki) — wolniej + postać się kurczy
+	# Przysiad (do zaglądania w śmietniki) - wolniej + postać się kurczy
 	var kuca := Input.is_action_pressed("crouch")
 	_wyglad.scale.y = lerpf(_wyglad.scale.y, 0.65 if kuca else 1.0, 12.0 * delta)
 	_ramie.position.y = lerpf(_ramie.position.y, 1.0 if kuca else 1.55, 12.0 * delta)
@@ -473,14 +473,14 @@ func _fizyka_chodu(delta: float) -> void:
 		predkosc = PREDKOSC_SPRINTU
 	predkosc *= Game.mnoznik_predkosci()   # "Adidasy z bazaru" (ulepszenie)
 	if _piwo > 0.0:
-		predkosc *= Balans.BONUS_PIWA   # "odwaga w płynie" — chwilowy bonus prędkości
+		predkosc *= Balans.BONUS_PIWA   # "odwaga w płynie" - chwilowy bonus prędkości
 	elif _kac > 0.0:
 		predkosc *= Balans.KARA_KACA    # na kacu wszystko boli
 	if _energetyk > 0.0:
 		_energetyk -= delta
 		predkosc *= Balans.ENERGETYK_BONUS   # kumuluje się z piwem, bo czemu nie
 
-	# Ruch względem obrotu postaci — z płynnym przyspieszaniem i hamowaniem
+	# Ruch względem obrotu postaci - z płynnym przyspieszaniem i hamowaniem
 	var kierunek := (transform.basis * Vector3(wejscie.x, 0, wejscie.y)).normalized()
 	# Po piwach postać sama znosi na boki (im więcej piw, tym mocniej)
 	if _piwo > 0.0 and kierunek:
@@ -506,7 +506,7 @@ func _fizyka_chodu(delta: float) -> void:
 		_reka_p.rotation.x = -sin(_faza_kroku) * 0.9 * amplituda
 		_noga_l.rotation.x = -sin(_faza_kroku) * 0.8 * amplituda
 		_noga_p.rotation.x = sin(_faza_kroku) * 0.8 * amplituda
-	# Dźwięk kroku przy każdym "postawieniu stopy" — zależny od podłoża
+	# Dźwięk kroku przy każdym "postawieniu stopy" - zależny od podłoża
 	var numer_kroku := int(_faza_kroku / PI)
 	if numer_kroku != _ostatni_krok and is_on_floor() and amplituda > 0.25:
 		_ostatni_krok = numer_kroku
@@ -515,7 +515,7 @@ func _fizyka_chodu(delta: float) -> void:
 
 ## Jazda wózkiem: rozpędzanie, poślizg, skręt zależny od prędkości.
 ## Wspólna fizyka arcade dla wózka i skutera. Parametry pojazdu siedzą
-## w Balans.POJAZDY — model jazdy jest jeden, różnią się tylko liczby.
+## w Balans.POJAZDY - model jazdy jest jeden, różnią się tylko liczby.
 func _fizyka_wozka(delta: float) -> void:
 	var dane: Dictionary = Balans.POJAZDY.get(_typ_pojazdu, Balans.POJAZDY["wozek"])
 	var gaz := Input.get_axis("move_back", "move_forward")   # W = 1, S = -1
@@ -539,7 +539,7 @@ func _fizyka_wozka(delta: float) -> void:
 	rotate_y(skret * moc_skretu * delta * clampf(_wozek_predkosc / 6.0, -1.0, 1.0))
 
 	# Poślizg: velocity leniwie goni kierunek przodu. W driftcie goni go
-	# DUŻO wolniej — stąd charakterystyczne "pływanie" bokiem.
+	# DUŻO wolniej - stąd charakterystyczne "pływanie" bokiem.
 	var przyczepnosc: float = Balans.DRIFT_PRZYCZEPNOSC if _drift else float(dane["przyczepnosc"])
 	var przod := -transform.basis.z * _wozek_predkosc
 	velocity.x = lerpf(velocity.x, przod.x, przyczepnosc * delta)
@@ -553,14 +553,14 @@ func _fizyka_wozka(delta: float) -> void:
 	_obsluz_lot(delta)
 	_efekt_driftu(delta)
 
-	# Jazda to nie sprint — "Papieros" odpoczywa
+	# Jazda to nie sprint - "Papieros" odpoczywa
 	Game.ustaw_stamine(papieros, false)
 	# Postać pochyla się nad kierownicą tym mocniej, im szybciej jedzie
 	var pochylenie := -0.18 * absf(_wozek_predkosc) / maks
 	if _typ_pojazdu == "skuter":
 		pochylenie = -0.3 * absf(_wozek_predkosc) / maks   # na skuterze kładziemy się na baku
 	_wyglad.rotation.x = lerpf(_wyglad.rotation.x, pochylenie, 6.0 * delta)
-	# Przechył w driftcie — pojazd kładzie się w zakręcie
+	# Przechył w driftcie - pojazd kładzie się w zakręcie
 	var docelowy_przechyl := (0.25 * skret) if _drift else 0.0
 	_wyglad.rotation.z = lerpf(_wyglad.rotation.z, docelowy_przechyl, 5.0 * delta)
 
@@ -586,7 +586,7 @@ func _obsluz_lot(delta: float) -> void:
 	_czas_lotu = 0.0
 	if lot < Balans.LOT_MIN_CZAS:
 		return
-	# Nagroda rośnie z długością lotu, ale przechodzi przez dzienny limit —
+	# Nagroda rośnie z długością lotu, ale przechodzi przez dzienny limit -
 	# inaczej skuter plus rampa to maszynka do pieniędzy. Prestiż, napis
 	# i statystyka lecą zawsze: styl ma się opłacać, tylko nie w złotówkach.
 	var bonus := lot * Balans.LOT_BONUS_ZA_SEKUNDE
@@ -598,11 +598,11 @@ func _obsluz_lot(delta: float) -> void:
 	Game.postep_zlecenia("lot")
 	var opis := "PIĘKNY LOT!" if lot < 1.0 else ("KOSMICZNY SKOK!" if lot < 1.6 else "ORBITA OSIEDLOWA!")
 	if wyplata > 0.0:
-		Game.pokaz_meme("%s %.1f s w powietrzu — bonus %s" % [opis, lot, Game.zl(wyplata)])
+		Game.pokaz_meme("%s %.1f s w powietrzu - bonus %s" % [opis, lot, Game.zl(wyplata)])
 	elif Game.limit_lotow_wyczerpany():
-		Game.pokaz_meme("%s Ale osiedle już to dziś widziało — za styl nie płacą." % opis)
+		Game.pokaz_meme("%s Ale osiedle już to dziś widziało - za styl nie płacą." % opis)
 	else:
-		Game.pokaz_meme("%s Za szybko po poprzednim — bez premii." % opis)
+		Game.pokaz_meme("%s Za szybko po poprzednim - bez premii." % opis)
 	Efekty.kurz(get_parent(), global_position)
 
 ## Wizualne i dźwiękowe potwierdzenie driftu (bez tego drift jest niewyczuwalny).
@@ -674,7 +674,7 @@ func _potknij_sie(z_tekstem := true) -> void:
 # --- Wózek sklepowy ---
 
 ## Wywoływane przez wozek.gd / skuter.gd, gdy gracz wciśnie E przy pojeździe.
-## "typ" to klucz w Balans.POJAZDY — decyduje o fizyce i wyglądzie.
+## "typ" to klucz w Balans.POJAZDY - decyduje o fizyce i wyglądzie.
 func wsiadz_do_wozka(pojazd: Node3D, typ := "wozek") -> void:
 	w_wozku = true
 	_wozek = pojazd
@@ -713,7 +713,7 @@ func _szukaj_interakcji() -> void:
 		if _drift:
 			Game.ustaw_prompt("DRIFT! Trzymaj tak dalej")
 		else:
-			Game.ustaw_prompt("E — wysiądź z %s | Ctrl+skręt = DRIFT | rampy dają bonus" % nazwa)
+			Game.ustaw_prompt("E - wysiądź z %s | Ctrl+skręt = DRIFT | rampy dają bonus" % nazwa)
 		return
 	var kandydaci: Array = []
 	kandydaci.append_array(_zasieg.get_overlapping_areas())   # butelki (Area3D)
@@ -743,7 +743,7 @@ func _aktualizuj_plecak(ile: int, maks: int) -> void:
 func _uderz() -> void:
 	Sfx.graj("cios")
 	Game.wstrzasnij(0.08)
-	# Wykrok — cios ma ciężar
+	# Wykrok - cios ma ciężar
 	velocity.x += -transform.basis.z.x * 2.5
 	velocity.z += -transform.basis.z.z * 2.5
 	var tw := create_tween()
@@ -763,7 +763,7 @@ func _uderz() -> void:
 	elif randf() < 0.3:
 		Game.pokaz_komunikat("Machnąłeś w powietrze. Powietrze niewzruszone.")
 
-## Publiczna gleba — gdy powali nas NPC (sąsiadka torebką, pies itd.).
+## Publiczna gleba - gdy powali nas NPC (sąsiadka torebką, pies itd.).
 func gleba() -> void:
 	if siedzi:
 		wstan()
@@ -817,7 +817,7 @@ func wypij_piwo() -> void:
 		_: Game.pokaz_komunikat("Pani Grażynka kręci głową, ale sprzedaje.")
 
 ## ENERGETYK z lodówki: pełny "Papieros" i podkręcenie na kilkanaście sekund.
-## Świadomie słabszy od piwa, ale bez kaca i bez plączących się nóg — to jest
+## Świadomie słabszy od piwa, ale bez kaca i bez plączących się nóg - to jest
 ## uczciwy zakup, a nie pułapka.
 func wypij_energetyka() -> void:
 	papieros = 100.0
@@ -825,7 +825,7 @@ func wypij_energetyka() -> void:
 	Sfx.graj("czkawka", -8.0, 1.6)
 	Game.pokaz_komunikat("Energetyk w siebie. Serce wali, ale nogi niosą!")
 
-## Baton — leczy kaca i dorzuca trochę sił. Cukier to cukier.
+## Baton - leczy kaca i dorzuca trochę sił. Cukier to cukier.
 func zjedz_batona() -> void:
 	papieros = minf(papieros + 45.0, 100.0)
 	if _kac > 0.0:
@@ -835,7 +835,7 @@ func zjedz_batona() -> void:
 	else:
 		Game.pokaz_komunikat("Baton zjedzony. Nie ratuje życia, ale poprawia.")
 
-## Woda — najtańsze wyjście z kaca.
+## Woda - najtańsze wyjście z kaca.
 func wypij_wode() -> void:
 	papieros = minf(papieros + 25.0, 100.0)
 	_kac = maxf(_kac - 12.0, 0.0)
@@ -844,7 +844,7 @@ func wypij_wode() -> void:
 	Game.pokaz_komunikat("Woda. Nudne, ale organizm dziękuje.")
 
 ## Efekty upojenia i kaca: bujanie kamery, pulsujące FOV, czkawka,
-## plączące się nogi, a na kacu — jęki i spowolnienie.
+## plączące się nogi, a na kacu - jęki i spowolnienie.
 func _efekt_piwa(delta: float) -> void:
 	var czas_s := Time.get_ticks_msec() / 1000.0
 	if _piwo > 0.0:
@@ -891,7 +891,7 @@ func podciagnij_sie(drazek: Vector3) -> void:
 		return
 	_cwiczy = true
 	Game.pokaz_komunikat("SIŁOWNIA OSIEDLOWA: OTWARTA.")
-	# Ręce w górę — chwyt drążka
+	# Ręce w górę - chwyt drążka
 	_reka_l.rotation.x = PI
 	_reka_p.rotation.x = PI
 	var pod_drazkiem := Vector3(drazek.x, 0.05, drazek.z)

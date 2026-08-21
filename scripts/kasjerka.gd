@@ -1,5 +1,5 @@
 extends StaticBody3D
-## PANI GRAŻYNKA — kasjerka w Biedronce. Można zagadać (E).
+## PANI GRAŻYNKA - kasjerka w Biedronce. Można zagadać (E).
 ## Bicie kasjerki kończy się natychmiastową glebą (ochrona nie śpi).
 
 const TEKSTY: Array[String] = [
@@ -15,7 +15,7 @@ func _ready() -> void:
 	add_to_group("bijalne")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
@@ -60,7 +60,7 @@ func _zbuduj_bryle() -> void:
 	add_child(kolizja)
 
 func podpowiedz() -> String:
-	return "E — zagadaj do kasjerki"
+	return "E - zagadaj do kasjerki"
 
 func interakcja(_gracz: Node3D) -> void:
 	Game.pokaz_komunikat(TEKSTY.pick_random())

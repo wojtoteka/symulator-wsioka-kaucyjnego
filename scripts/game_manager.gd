@@ -51,10 +51,10 @@ var wsiokometr := 0.0
 var _czas_bezczynnosci := 0.0
 var _legenda_ogloszona := false
 
-## Dzienny kurs skupu złomu — codziennie inny, jak na prawdziwej giełdzie
+## Dzienny kurs skupu złomu - codziennie inny, jak na prawdziwej giełdzie
 ## (a przynajmniej jak Zdzisiek twierdzi). Mnożnik ceny złomu.
 var kurs_zlomu := 1.0
-var skup_otwarty := true       # zamyka się przed końcem dnia — zdąż!
+var skup_otwarty := true       # zamyka się przed końcem dnia - zdąż!
 
 ## Tryb narzędziowy (--testy / --zrzut): gra działa normalnie, ale NIE dotyka
 ## zapisu kariery gracza. Patrz zapisz_kariere().
@@ -66,7 +66,7 @@ var czulosc := 1.0             # mnożnik czułości myszy
 
 # --- KARIERA (utrzymuje się między dniami i między uruchomieniami gry) ---
 var dzien := 1
-var bank := 0.0                # odłożona kaucja z poprzednich dni — waluta ulepszeń
+var bank := 0.0                # odłożona kaucja z poprzednich dni - waluta ulepszeń
 var ulepszenia := {"plecak": 0, "adidasy": 0, "czapka": 0, "pluca": 0, "kluczyki": 0, "dres": 0}
 const ULEPSZENIA_INFO := {
 	"plecak": {"nazwa": "Większy plecak", "opis": "+5 miejsc za poziom", "ceny": [30.0, 60.0, 120.0]},
@@ -125,7 +125,7 @@ const TEKSTY_PELNY_PLECAK: Array[String] = [
 	"Plecak trzeszczy w szwach. Czas na Biedronkę!",
 ]
 
-## Co gracz "mógłby kupić" za zarobioną kwotę — do ekranu podsumowania.
+## Co gracz "mógłby kupić" za zarobioną kwotę - do ekranu podsumowania.
 ## Format: [próg_od_zł, lista tekstów do wylosowania]
 const ZAKUPY: Array = [
 	[0.0, [
@@ -165,7 +165,7 @@ func _ready() -> void:
 	_wczytaj_ustawienia()
 	_wczytaj_kariere()
 	_losuj_wyzwanie()
-	_losuj_cel_dnia()        # musi być PO wczytaniu kariery — cel zależy od dnia
+	_losuj_cel_dnia()        # musi być PO wczytaniu kariery - cel zależy od dnia
 	_losuj_kurs_zlomu()
 	# Tryb deweloperski: `godot -- --autostart` pomija menu główne,
 	# a `--krotki-dzien` skraca rundę do 8 s (testy ekranu podsumowania)
@@ -197,7 +197,7 @@ func mnoznik_szczescia() -> float:
 func mnoznik_papierosa() -> float:
 	return 1.0 - 0.25 * ulepszenia["pluca"]
 
-## Złoty dres podbija cały przyrost Wsiokometru — prestiż to prestiż.
+## Złoty dres podbija cały przyrost Wsiokometru - prestiż to prestiż.
 func mnoznik_prestizu() -> float:
 	return 1.5 if int(ulepszenia.get("dres", 0)) > 0 else 1.0
 
@@ -230,16 +230,16 @@ func _losuj_kurs_zlomu() -> void:
 ## Opis kursu do dymków Zdziśka i HUD-u.
 func opis_kursu() -> String:
 	if kurs_zlomu >= 1.3:
-		return "kurs %d%% — ŻNIWA, miedź w górę!" % roundi(kurs_zlomu * 100)
+		return "kurs %d%% - ŻNIWA, miedź w górę!" % roundi(kurs_zlomu * 100)
 	elif kurs_zlomu >= 1.05:
-		return "kurs %d%% — dziś płacą przyzwoicie" % roundi(kurs_zlomu * 100)
+		return "kurs %d%% - dziś płacą przyzwoicie" % roundi(kurs_zlomu * 100)
 	elif kurs_zlomu >= 0.95:
-		return "kurs %d%% — normalka" % roundi(kurs_zlomu * 100)
-	return "kurs %d%% — kryzys, Zdzisiek płacze" % roundi(kurs_zlomu * 100)
+		return "kurs %d%% - normalka" % roundi(kurs_zlomu * 100)
+	return "kurs %d%% - kryzys, Zdzisiek płacze" % roundi(kurs_zlomu * 100)
 
 # --- Cel dnia ---
 ## Cel rośnie z dniem kariery i ma losowe wahanie, więc nigdy nie jest ten sam.
-## Zaokrąglamy do pełnych piątek — "Cel: 87,43 zł" czytałoby się jak błąd.
+## Zaokrąglamy do pełnych piątek - "Cel: 87,43 zł" czytałoby się jak błąd.
 func _losuj_cel_dnia() -> void:
 	var baza := Balans.CEL_BAZOWY + Balans.CEL_ZA_DZIEN * (dzien - 1)
 	var wahanie := randf_range(1.0 - Balans.CEL_WAHANIE, 1.0 + Balans.CEL_WAHANIE)
@@ -260,7 +260,7 @@ func kara_dnia() -> float:
 # --- Akrobacje ---
 ## Wypłata za lot z rampy, ograniczona limitem dziennym i odstępem czasu.
 ## Zwraca kwotę FAKTYCZNIE wypłaconą (0.0 = limit wyczerpany albo za szybko
-## po poprzednim triku). Prestiż i napisy dostaje gracz tak czy siak — chodzi
+## po poprzednim triku). Prestiż i napisy dostaje gracz tak czy siak - chodzi
 ## o to, żeby skakanie w kółko przestało być źródłem utrzymania.
 func nagroda_za_lot(kwota: float) -> float:
 	var teraz := Time.get_ticks_msec() / 1000.0
@@ -287,7 +287,7 @@ func _losuj_wyzwanie() -> void:
 	wyzwanie_changed.emit(opis_wyzwania(), 0, wyzwanie["cel"], false)
 
 func opis_wyzwania() -> String:
-	# Część wyzwań ma opis bez "%d" (np. "Wykręć combo x4") — podstawianie
+	# Część wyzwań ma opis bez "%d" (np. "Wykręć combo x4") - podstawianie
 	# celu wywalałoby wtedy błąd formatowania
 	var opis := str(wyzwanie.get("opis", ""))
 	return opis % wyzwanie["cel"] if opis.contains("%") else opis
@@ -329,11 +329,11 @@ func _wczytaj_kariere() -> void:
 	for id in ulepszenia:
 		ulepszenia[id] = cfg.get_value("ulepszenia", id, 0)
 
-## Gracz raportuje poziom upojenia/kaca — HUD nakłada kolorowy filtr.
+## Gracz raportuje poziom upojenia/kaca - HUD nakłada kolorowy filtr.
 func raportuj_upojenie(pijanstwo: float, kac: float) -> void:
 	upojenie.emit(pijanstwo, kac)
 
-## Screen shake — kamera gracza nasłuchuje sygnału "wstrzas".
+## Screen shake - kamera gracza nasłuchuje sygnału "wstrzas".
 func wstrzasnij(sila: float) -> void:
 	wstrzas.emit(sila)
 
@@ -368,7 +368,7 @@ func _process(delta: float) -> void:
 	if czas <= 0.0:
 		koniec_dnia()
 		return
-	# Skup złomu zamyka się przed końcem dnia — Zdzisiek ma swoje życie
+	# Skup złomu zamyka się przed końcem dnia - Zdzisiek ma swoje życie
 	if skup_otwarty:
 		if not _ostrzezenie_skupu and czas <= Balans.SKUP_OSTRZEZENIE:
 			_ostrzezenie_skupu = true
@@ -396,7 +396,7 @@ func _process(delta: float) -> void:
 		_memy_odliczanie = randf_range(28.0, 45.0)
 		if _pierwszy_mem:
 			_pierwszy_mem = false
-			meme.emit(MEMY[0])   # "NIECH ŻYJE KAUCJA I BEZROBOCIE!" — gwarantowany
+			meme.emit(MEMY[0])   # "NIECH ŻYJE KAUCJA I BEZROBOCIE!" - gwarantowany
 		else:
 			meme.emit(MEMY.pick_random())
 
@@ -404,14 +404,14 @@ func _process(delta: float) -> void:
 func start_gry() -> void:
 	w_menu = false
 
-## Gracz raportuje swoją prędkość co klatkę — do liczenia bezczynności.
+## Gracz raportuje swoją prędkość co klatkę - do liczenia bezczynności.
 func raportuj_ruch(predkosc_pozioma: float, delta: float) -> void:
 	if predkosc_pozioma > 0.5:
 		_czas_bezczynnosci = 0.0
 	else:
 		_czas_bezczynnosci += delta
 
-## Pasek "Papieros" (stamina) — gracz przekazuje stan, HUD wyświetla.
+## Pasek "Papieros" (stamina) - gracz przekazuje stan, HUD wyświetla.
 func ustaw_stamine(procent: float, pali: bool) -> void:
 	stamina_changed.emit(procent, pali)
 
@@ -436,7 +436,7 @@ func podnies_przedmiot(dane: Dictionary, bonus_wsiokometru := 4.0) -> Dictionary
 	var slotow := int(dane.get("miejsca", 1))
 	if zajete_miejsca() + slotow > pojemnosc_plecaka():
 		if slotow > 1 and zajete_miejsca() < pojemnosc_plecaka():
-			pokaz_komunikat("%s się nie zmieści — potrzeba %d wolnych miejsc. Opróżnij plecak!" % [dane["nazwa"], slotow])
+			pokaz_komunikat("%s się nie zmieści - potrzeba %d wolnych miejsc. Opróżnij plecak!" % [dane["nazwa"], slotow])
 		else:
 			pokaz_komunikat(TEKSTY_PELNY_PLECAK.pick_random())
 		return {"ok": false}
@@ -467,7 +467,7 @@ func zgub_combo() -> void:
 	_combo_odliczanie = 0.0
 	combo_changed.emit(0, 1)
 
-## Wysypanie części plecaka — np. po spotkaniu z maską auta.
+## Wysypanie części plecaka - np. po spotkaniu z maską auta.
 ## Zwraca liczbę faktycznie zgubionych sztuk.
 func zgub_fanty(ile: int) -> int:
 	var zgubione := 0
@@ -480,7 +480,7 @@ func zgub_fanty(ile: int) -> int:
 		backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
 	return zgubione
 
-## Wygrana/premia — kasa rośnie poza butelkomatem (np. zdrapka).
+## Wygrana/premia - kasa rośnie poza butelkomatem (np. zdrapka).
 func dodaj_kase(kwota: float) -> void:
 	kasa += kwota
 	money_changed.emit(kasa)
@@ -491,7 +491,7 @@ func dodaj_kase(kwota: float) -> void:
 ## w grze i rozliczenie na koniec dnia zawsze mówią to samo.
 ##
 ## Sprawdzenie siedzi tutaj, a nie przy samym butelkomacie, bo kasa wpływa
-## też ze zleceń, zdrapek i akrobacji — wcześniej te drogi nie zaliczały celu
+## też ze zleceń, zdrapek i akrobacji - wcześniej te drogi nie zaliczały celu
 ## i dało się skończyć dzień z kwotą ponad cel, a mimo to dostać karę.
 func _sprawdz_cel_dnia() -> void:
 	if cel_osiagniety or kasa < cel_dnia:
@@ -499,7 +499,7 @@ func _sprawdz_cel_dnia() -> void:
 	cel_osiagniety = true
 	pokaz_komunikat("CEL DNIA OSIĄGNIĘTY (%s)! Zostało jeszcze wyzwanie." % zl(cel_dnia))
 
-## Mandat od Straży Miejskiej. Płacisz ile masz — reszta "w systemie".
+## Mandat od Straży Miejskiej. Płacisz ile masz - reszta "w systemie".
 func zaplac_mandat(kwota: float, powod: String) -> void:
 	var zaplacono := minf(kwota, kasa)
 	kasa -= zaplacono
@@ -507,7 +507,7 @@ func zaplac_mandat(kwota: float, powod: String) -> void:
 	statystyki["mandaty"] += 1
 	Sfx.graj("blad")
 	if zaplacono < kwota:
-		pokaz_komunikat("MANDAT za %s: %s. Nie masz tyle — reszta 'w systemie'." % [powod, zl(kwota)])
+		pokaz_komunikat("MANDAT za %s: %s. Nie masz tyle - reszta 'w systemie'." % [powod, zl(kwota)])
 	else:
 		pokaz_komunikat("MANDAT za %s: -%s. Piękna Polska." % [powod, zl(kwota)])
 
@@ -528,7 +528,7 @@ func dodaj_przedmiot_bez_combo(nazwa: String, kaucja: float, kat := "kaucja") ->
 	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
 	return true
 
-## Wsiokometr rośnie (zbieranie, grzebanie). Przy 100 — LEGENDA OSIEDLA.
+## Wsiokometr rośnie (zbieranie, grzebanie). Przy 100 - LEGENDA OSIEDLA.
 func dodaj_wsiokometr(ile: float) -> void:
 	wsiokometr = clampf(wsiokometr + ile * mnoznik_prestizu(), 0.0, 100.0)
 	wsiokometr_changed.emit(wsiokometr)
@@ -536,10 +536,10 @@ func dodaj_wsiokometr(ile: float) -> void:
 		_legenda_ogloszona = true
 		Sfx.odpal_klasyk()   # legenda osiedla ma swój hymn
 		wstrzasnij(0.3)
-		pokaz_komunikat("WSIOKOMETR 100% — JESTEŚ LEGENDĄ OSIEDLA!")
+		pokaz_komunikat("WSIOKOMETR 100% - JESTEŚ LEGENDĄ OSIEDLA!")
 
-## Oddanie zawartości plecaka z danej kategorii ("kaucja" — butelkomat,
-## "zlom" — skup). Reszta zostaje w plecaku. Zwraca {"ile", "kwota"}.
+## Oddanie zawartości plecaka z danej kategorii ("kaucja" - butelkomat,
+## "zlom" - skup). Reszta zostaje w plecaku. Zwraca {"ile", "kwota"}.
 ## "mnoznik_ceny" pozwala skupowi zapłacić wg dziennego kursu złomu.
 func oddaj_kategorie(kat: String, mnoznik_ceny := 1.0) -> Dictionary:
 	var ile := 0
@@ -561,7 +561,7 @@ func oddaj_kategorie(kat: String, mnoznik_ceny := 1.0) -> Dictionary:
 	_sprawdz_cel_dnia()
 	return {"ile": ile, "kwota": kwota}
 
-## Oddanie butelek i puszek w butelkomacie (złom zostaje — ten idzie na skup).
+## Oddanie butelek i puszek w butelkomacie (złom zostaje - ten idzie na skup).
 func oddaj_wszystko() -> Dictionary:
 	return oddaj_kategorie("kaucja")
 
@@ -573,7 +573,7 @@ func co_moge_kupic(kwota: float) -> String:
 			wybrane = prog[1]
 	return wybrane.pick_random()
 
-## Koniec rundy — zatrzymuje grę i wysyła podsumowanie do HUD.
+## Koniec rundy - zatrzymuje grę i wysyła podsumowanie do HUD.
 func koniec_dnia() -> void:
 	if not gra_trwa:
 		return
@@ -596,7 +596,7 @@ func koniec_dnia() -> void:
 		premia = premia_dnia()
 		bank += premia
 	else:
-		# Kara nie może wpędzić w minus — osiedle jest surowe, ale nie okrutne
+		# Kara nie może wpędzić w minus - osiedle jest surowe, ale nie okrutne
 		kara = minf(kara_dnia(), bank)
 		bank -= kara
 	zapisz_kariere()
@@ -619,7 +619,7 @@ func koniec_dnia() -> void:
 		"combo_max": statystyki["combo_max"],
 		"upadki": statystyki["upadki"],
 		"mandaty": statystyki["mandaty"],
-		"w_plecaku": plecak.size(),   # to, czego nie zdążył oddać — przepada :)
+		"w_plecaku": plecak.size(),   # to, czego nie zdążył oddać - przepada :)
 		"cel": cel_osiagniety,
 		"zakupy": co_moge_kupic(kasa),
 		"dzien": dzien,
@@ -628,7 +628,7 @@ func koniec_dnia() -> void:
 		"wyzwanie_ok": wyzwanie.get("zrobione", false),
 	})
 
-## Za co konkretnie osiedle ściąga karę — gracz ma wiedzieć, co odpuścił.
+## Za co konkretnie osiedle ściąga karę - gracz ma wiedzieć, co odpuścił.
 func _powod_kary(cel_ok: bool, wyzwanie_ok: bool) -> String:
 	if cel_ok and wyzwanie_ok:
 		return ""
@@ -638,7 +638,7 @@ func _powod_kary(cel_ok: bool, wyzwanie_ok: bool) -> String:
 		return "cel kwotowy niewykonany"
 	return "wyzwanie dnia odpuszczone"
 
-## Reset stanu i przeładowanie sceny — nowy dzień na osiedlu.
+## Reset stanu i przeładowanie sceny - nowy dzień na osiedlu.
 func nowy_dzien() -> void:
 	pierwszy_dzien = false   # tutorial już się nie powtarza
 	_pierwszy_mem = true     # ale klasyk wraca każdego dnia
@@ -652,7 +652,7 @@ func nowy_dzien() -> void:
 	plecak.clear()
 	czas = CZAS_RUNDY
 	gra_trwa = true
-	w_menu = false        # restart pomija menu główne — od razu gramy
+	w_menu = false        # restart pomija menu główne - od razu gramy
 	cel_osiagniety = false
 	combo = 0
 	wsiokometr = 0.0

@@ -1,10 +1,10 @@
 extends Node3D
-## STRAŻ MIEJSKA — patroluje osiedle po stałej trasie.
+## STRAŻ MIEJSKA - patroluje osiedle po stałej trasie.
 ## Przyłapie cię na grzebaniu w śmietniku (z bliska) = mandat.
 ## Podniesienie ręki na funkcjonariusza = mandat + gleba wychowawcza.
 
 const PREDKOSC := 2.4
-const PREDKOSC_POSCIGU := 4.6      # wolniej niż sprint gracza (8.0) — da się uciec
+const PREDKOSC_POSCIGU := 4.6      # wolniej niż sprint gracza (8.0) - da się uciec
 const PRZERWA_KOMENTARZY := 14.0
 const DYSTANS_ZLAPANIA := 1.8      # z tej odległości cię dopadnie
 const DYSTANS_UCIECZKI := 26.0     # dalej niż to = gubi cię z oczu
@@ -50,7 +50,7 @@ func _ready() -> void:
 	if gracze.size() > 0:
 		_gracz = gracze[0]
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
@@ -136,7 +136,7 @@ func _poscig(delta: float) -> void:
 		var kierunek := do_gracza.normalized()
 		global_position += kierunek * PREDKOSC_POSCIGU * delta
 		look_at(global_position + kierunek, Vector3.UP)
-	# Sekundy ucieczki — paliwo dla zlecenia "Test refleksu"
+	# Sekundy ucieczki - paliwo dla zlecenia "Test refleksu"
 	_sekundnik += delta
 	if _sekundnik >= 1.0:
 		_sekundnik -= 1.0
@@ -159,7 +159,7 @@ func _poscig(delta: float) -> void:
 	else:
 		_poza_zasiegiem = 0.0
 
-## Start pościgu — wołane, gdy gracz przegnie (grzebanie na oczach patrolu,
+## Start pościgu - wołane, gdy gracz przegnie (grzebanie na oczach patrolu,
 ## cios w funkcjonariusza, kradzież wózka pod nosem).
 func rozpocznij_poscig(powod := "") -> void:
 	if _stan == Stan.POSCIG or not Game.gra_trwa:
@@ -184,7 +184,7 @@ func _zlap() -> void:
 	if is_instance_valid(_gracz) and _gracz.has_method("gleba"):
 		_gracz.gleba()
 
-## Odpuszcza pościg — gracz uciekł albo cel zniknął.
+## Odpuszcza pościg - gracz uciekł albo cel zniknął.
 func _odpusc(gracz_uciekl: bool) -> void:
 	_stan = Stan.PATROL
 	_poza_zasiegiem = 0.0

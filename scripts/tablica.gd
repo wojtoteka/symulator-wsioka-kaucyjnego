@@ -1,7 +1,7 @@
 extends StaticBody3D
-## TABLICA OGŁOSZEŃ — osiedlowy urząd pracy. Wiszą tu kartki ze zleceniami
+## TABLICA OGŁOSZEŃ - osiedlowy urząd pracy. Wiszą tu kartki ze zleceniami
 ## (dane z data/zlecenia.json). E przyjmuje ofertę, F przewija na następną
-## kartkę — bo tablicę na osiedlu obsługuje się pięścią.
+## kartkę - bo tablicę na osiedlu obsługuje się pięścią.
 
 var _kartka: Label3D          # treść bieżącej oferty
 var _naglowek: Label3D
@@ -27,7 +27,7 @@ func _na_przyjecie(_dane: Dictionary) -> void:
 func _na_zakonczenie(_dane: Dictionary, _sukces: bool) -> void:
 	_odswiez(Zlecenia.biezaca_oferta())
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -49,7 +49,7 @@ func _zbuduj_bryle() -> void:
 	# Daszek, żeby ogłoszeń nie zmyło (i tak zmywa)
 	var daszek := _pudlo(Vector3(0, 2.55, 0.12), Vector3(2.7, 0.08, 0.45), Paleta.DREWNO_CIEMNE)
 	daszek.rotation.x = 0.22
-	# Kartki — cztery pożółkłe papiery przypięte krzywo
+	# Kartki - cztery pożółkłe papiery przypięte krzywo
 	for i in 4:
 		var kartka := _pudlo(
 			Vector3(-0.75 + i * 0.5, 1.55 + randf_range(-0.12, 0.12), 0.06),
@@ -92,7 +92,7 @@ func _odswiez(dane: Dictionary) -> void:
 		_kartka.text = "Brak ogłoszeń.\nOsiedle śpi."
 		return
 	if Zlecenia.czy_wykonane(str(dane["id"])):
-		_kartka.text = "%s\n— WYKONANE —\n(F: następna kartka)" % str(dane.get("tytul", "Zlecenie"))
+		_kartka.text = "%s\n- WYKONANE -\n(F: następna kartka)" % str(dane.get("tytul", "Zlecenie"))
 		return
 	_kartka.text = "%s\nZleca: %s\n%s\nNagroda: %s | czas: %ds" % [
 		str(dane.get("tytul", "Zlecenie")),
@@ -104,13 +104,13 @@ func _odswiez(dane: Dictionary) -> void:
 
 func podpowiedz() -> String:
 	if Zlecenia.czy_aktywne():
-		return "Zlecenie w toku: %s (F — zrezygnuj)" % Zlecenia.opis_aktywnego()
+		return "Zlecenie w toku: %s (F - zrezygnuj)" % Zlecenia.opis_aktywnego()
 	var oferta := Zlecenia.biezaca_oferta()
 	if oferta.is_empty():
-		return "Tablica ogłoszeń — pusto"
+		return "Tablica ogłoszeń - pusto"
 	if Zlecenia.czy_wykonane(str(oferta["id"])):
-		return "To zlecenie masz z głowy — F: następna kartka"
-	return "E — przyjmij zlecenie: %s | F — inna kartka" % str(oferta.get("tytul", "?"))
+		return "To zlecenie masz z głowy - F: następna kartka"
+	return "E - przyjmij zlecenie: %s | F - inna kartka" % str(oferta.get("tytul", "?"))
 
 func interakcja(_gracz: Node3D) -> void:
 	if Zlecenia.czy_aktywne():

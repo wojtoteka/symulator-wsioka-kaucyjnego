@@ -1,12 +1,12 @@
 extends StaticBody3D
-## ŁAWKA OSIEDLOWA — można na niej usiąść (E) i odpocząć.
+## ŁAWKA OSIEDLOWA - można na niej usiąść (E) i odpocząć.
 ## Na siedząco "Papieros" regeneruje się podwójnie. E ponownie = wstajesz.
 
 func _ready() -> void:
 	add_to_group("interakcja")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -33,7 +33,7 @@ func _zbuduj_bryle() -> void:
 	add_child(kolizja)
 
 func podpowiedz() -> String:
-	return "E — usiądź na ławce"
+	return "E - usiądź na ławce"
 
 ## Sadzamy gracza na siedzisku, twarzą od oparcia.
 func interakcja(gracz: Node3D) -> void:

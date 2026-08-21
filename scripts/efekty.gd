@@ -1,5 +1,5 @@
 class_name Efekty
-## PROSTE EFEKTY CZĄSTECZKOWE — tworzone w całości w kodzie.
+## PROSTE EFEKTY CZĄSTECZKOWE - tworzone w całości w kodzie.
 ## Użycie: Efekty.blysk(rodzic, pozycja, kolor) / Efekty.kurz(rodzic, pozycja)
 
 ## Iskierki przy podnoszeniu przedmiotu (złote fanty = złote iskry).

@@ -1,7 +1,7 @@
 extends StaticBody3D
-## SKUTER "ROMET" — stoi przy garażach. Szybszy i zwrotniejszy od wózka,
+## SKUTER "ROMET" - stoi przy garażach. Szybszy i zwrotniejszy od wózka,
 ## ale nie zbiera butelek za ciebie: na skuterze trzeba zsiąść po fant.
-## Fizyka (drift, skoki z ramp) siedzi w player.gd — patrz Balans.POJAZDY.
+## Fizyka (drift, skoki z ramp) siedzi w player.gd - patrz Balans.POJAZDY.
 
 var _kolizja: CollisionShape3D
 
@@ -10,7 +10,7 @@ func _ready() -> void:
 	add_to_group("cel_nawigacji")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color, emisja := false) -> StandardMaterial3D:
 	return Styl.bryla(kolor, Styl.KONTUR_OBIEKT, emisja)
 
@@ -25,7 +25,7 @@ func _pudlo(pozycja: Vector3, rozmiar: Vector3, kolor: Color) -> MeshInstance3D:
 	return mesh
 
 func _zbuduj_bryle() -> void:
-	# Podłoga, siedzisko, owiewka — ten sam kształt co wersja "w ruchu"
+	# Podłoga, siedzisko, owiewka - ten sam kształt co wersja "w ruchu"
 	_pudlo(Vector3(0, 0.34, 0), Vector3(0.42, 0.12, 1.35), Color(0.75, 0.18, 0.16))
 	_pudlo(Vector3(0, 0.55, 0.28), Vector3(0.36, 0.18, 0.55), Color(0.12, 0.12, 0.14))
 	_pudlo(Vector3(0, 0.68, -0.55), Vector3(0.34, 0.5, 0.22), Color(0.8, 0.2, 0.18))
@@ -70,14 +70,14 @@ func nazwa_celu() -> String:
 
 func podpowiedz() -> String:
 	if not Game.ma_kluczyki():
-		return "Skuter zamknięty — kluczyki kupisz w MELINIE (koniec dnia)"
-	return "E — odpal skuter (Ctrl = drift, szukaj ramp!)"
+		return "Skuter zamknięty - kluczyki kupisz w MELINIE (koniec dnia)"
+	return "E - odpal skuter (Ctrl = drift, szukaj ramp!)"
 
-## Gracz wsiada — skuter znika z mapy, gracz "przejmuje" jego wygląd.
+## Gracz wsiada - skuter znika z mapy, gracz "przejmuje" jego wygląd.
 func interakcja(gracz: Node3D) -> void:
 	if not gracz.is_in_group("gracz"):
 		return
-	# Bez kluczyków ani rusz — to jest ulepszenie kupowane za kaucję
+	# Bez kluczyków ani rusz - to jest ulepszenie kupowane za kaucję
 	if not Game.ma_kluczyki():
 		Sfx.graj("blad")
 		Game.pokaz_komunikat("Zamknięty na kluczyk. Rysiek sprzeda ci zapasowy... za 90 zł.")
@@ -86,7 +86,7 @@ func interakcja(gracz: Node3D) -> void:
 	visible = false
 	_kolizja.set_deferred("disabled", true)
 
-## Gracz zsiada — skuter wraca na mapę we wskazanym miejscu.
+## Gracz zsiada - skuter wraca na mapę we wskazanym miejscu.
 func odstaw(pozycja: Vector3) -> void:
 	global_position = Vector3(pozycja.x, 0, pozycja.z)
 	visible = true

@@ -11,7 +11,7 @@
       "czas": 110,
       "nagroda": 18.0,
       "prestiz": 15.0,
-      "start": "Grażyna: \"Zięć zostawił szkło po weselu. Zbierzesz — podzielimy się.\"",
+      "start": "Grażyna: \"Zięć zostawił szkło po weselu. Zbierzesz - podzielimy się.\"",
       "sukces": "Grażyna: \"Złota rączka! Kaucję masz, a o zięciu nie mówimy.\"",
       "porazka": "Grażyna: \"Za wolno. Zięć sam by szybciej.\""
     },
@@ -81,7 +81,7 @@
       "czas": 140,
       "nagroda": 26.0,
       "prestiz": 22.0,
-      "start": "Kacper: \"Podobno na osiedlu leży ZŁOTA butelka. Znajdziesz — dam z tacy. Znaczy z oszczędności.\"",
+      "start": "Kacper: \"Podobno na osiedlu leży ZŁOTA butelka. Znajdziesz - dam z tacy. Znaczy z oszczędności.\"",
       "sukces": "Kacper: \"Cud! Masz obiecane. I ani słowa proboszczowi.\"",
       "porazka": "Kacper: \"Widocznie nie był ci pisany ten cud.\""
     },

@@ -1,5 +1,5 @@
 extends Node3D
-## PRZECHODZIEŃ — spaceruje chodnikiem tam i z powrotem.
+## PRZECHODZIEŃ - spaceruje chodnikiem tam i z powrotem.
 ## Gdy gracz go mija, czasem pojawia się komentarz pełen dezaprobaty.
 
 const PREDKOSC := 2.0
@@ -34,7 +34,7 @@ func _ready() -> void:
 	if gracze.size() > 0:
 		_gracz = gracze[0]
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 		return
 	_odliczanie -= delta
 	_ucieczka -= delta
-	# Spacer do celu i nawrót (po oberwaniu — paniczny sprint)
+	# Spacer do celu i nawrót (po oberwaniu - paniczny sprint)
 	var predkosc := PREDKOSC * (3.2 if _ucieczka > 0.0 else 1.0)
 	var kierunek := _cel - global_position
 	kierunek.y = 0
@@ -96,7 +96,7 @@ func _process(delta: float) -> void:
 			_odliczanie = PRZERWA_KOMENTARZY
 			Game.pokaz_komunikat(TEKSTY.pick_random())
 
-## Oberwał — ucieka, godność zostaje na chodniku.
+## Oberwał - ucieka, godność zostaje na chodniku.
 func oberwij(_gracz_bijacy: Node3D) -> void:
 	_ucieczka = 6.0
 	_odliczanie = PRZERWA_KOMENTARZY

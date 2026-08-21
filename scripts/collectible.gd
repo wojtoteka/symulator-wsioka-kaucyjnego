@@ -1,5 +1,5 @@
 extends Area3D
-## PRZEDMIOT DO ZEBRANIA — butelka plastikowa, szklana, puszka,
+## PRZEDMIOT DO ZEBRANIA - butelka plastikowa, szklana, puszka,
 ## ZŁOTA butelka albo ZŁOTA PUSZKA (bardzo rzadka, 5 zł!).
 ## Tworzony w kodzie przez world.gd i trash_bin.gd:
 ##   var c = preload("res://scripts/collectible.gd").new()
@@ -7,7 +7,7 @@ extends Area3D
 
 enum Typ {
 	PLASTIK, SZKLO, PUSZKA, ZLOTA, ZLOTA_PUSZKA,
-	KABEL, BLACHA, FELGA, AKUMULATOR,   # ZŁOM — oddawany na skupie u Zdziśka
+	KABEL, BLACHA, FELGA, AKUMULATOR,   # ZŁOM - oddawany na skupie u Zdziśka
 }
 
 ## Dane typów: nazwa, wartość (zł), kolor bryły, kategoria i zajmowane miejsca.
@@ -55,7 +55,7 @@ static func losowy_typ(szczescie := 1.0) -> Typ:
 		return Typ.SZKLO
 	return Typ.PLASTIK
 
-## Losowanie kawałka złomu — akumulatory rzadkie, blacha pospolita.
+## Losowanie kawałka złomu - akumulatory rzadkie, blacha pospolita.
 static func losowy_typ_zlomu() -> Typ:
 	var los := randf()
 	if los < 0.08:
@@ -69,7 +69,7 @@ static func losowy_typ_zlomu() -> Typ:
 func _ready() -> void:
 	add_to_group("interakcja")
 	add_to_group("kolekcjonerskie")   # po tej grupie szuka konkurent i wózek
-	# Kolizja — kula, którą wykrywa zasięg gracza
+	# Kolizja - kula, którą wykrywa zasięg gracza
 	var ksztalt := CollisionShape3D.new()
 	var kula := SphereShape3D.new()
 	kula.radius = 0.5
@@ -86,7 +86,7 @@ func _zbuduj_bryle() -> void:
 	var wysokosc := 0.5   # do ustawienia bryły na ziemi
 	match typ:
 		Typ.KABEL:
-			# Zwój kabla — torus leżący płasko
+			# Zwój kabla - torus leżący płasko
 			var torus := TorusMesh.new()
 			torus.inner_radius = 0.1
 			torus.outer_radius = 0.22
@@ -94,14 +94,14 @@ func _zbuduj_bryle() -> void:
 			_mesh.rotation.x = PI / 2
 			wysokosc = 0.24
 		Typ.BLACHA:
-			# Pognieciony kawał blachy — płaska płyta pod kątem
+			# Pognieciony kawał blachy - płaska płyta pod kątem
 			var plyta := BoxMesh.new()
 			plyta.size = Vector3(0.55, 0.06, 0.4)
 			_mesh.mesh = plyta
 			_mesh.rotation.z = 0.15
 			wysokosc = 0.12
 		Typ.FELGA:
-			# Felga — gruby torus na sztorc
+			# Felga - gruby torus na sztorc
 			var torus := TorusMesh.new()
 			torus.inner_radius = 0.13
 			torus.outer_radius = 0.3
@@ -109,7 +109,7 @@ func _zbuduj_bryle() -> void:
 			_mesh.mesh = torus
 			wysokosc = 0.6
 		Typ.AKUMULATOR:
-			# Akumulator — solidne czarne pudło
+			# Akumulator - solidne czarne pudło
 			var pudlo := BoxMesh.new()
 			pudlo.size = Vector3(0.42, 0.34, 0.26)
 			_mesh.mesh = pudlo
@@ -125,17 +125,17 @@ func _zbuduj_bryle() -> void:
 					walec.top_radius = 0.05
 					walec.bottom_radius = 0.11
 					walec.height = 0.42
-				_:  # plastik i złota — kształt butelki 0,5 l
+				_:  # plastik i złota - kształt butelki 0,5 l
 					walec.top_radius = 0.045
 					walec.bottom_radius = 0.1
 					walec.height = 0.5
 			_mesh.mesh = walec
 			wysokosc = walec.height
-	# Fanty dostają najgrubszy kontur w grze — to ich gracz szuka wzrokiem,
+	# Fanty dostają najgrubszy kontur w grze - to ich gracz szuka wzrokiem,
 	# więc muszą odcinać się od trawy i asfaltu nawet z drugiego końca mapy
 	var mat := Styl.bryla(DANE[typ]["kolor"], Styl.KONTUR_POSTAC, czy_zloty(typ), true)
 	if czy_zloty(typ):
-		# Złote fanty świecą — mają się rzucać w oczy z daleka
+		# Złote fanty świecą - mają się rzucać w oczy z daleka
 		mat.emission = Color(1.0, 0.75, 0.1)
 		mat.emission_energy_multiplier = 1.8 if typ == Typ.ZLOTA_PUSZKA else 1.4
 		mat.metallic = 0.8
@@ -152,11 +152,11 @@ func _zbuduj_bryle() -> void:
 func podpowiedz() -> String:
 	if kategoria(typ) == "zlom":
 		var slot := miejsca(typ)
-		return "E — podnieś: %s (skup: %s%s)" % [
+		return "E - podnieś: %s (skup: %s%s)" % [
 			DANE[typ]["nazwa"], Game.zl(DANE[typ]["kaucja"]),
 			", %d miejsca" % slot if slot > 1 else "",
 		]
-	return "E — podnieś: %s (+%s)" % [DANE[typ]["nazwa"], Game.zl(DANE[typ]["kaucja"])]
+	return "E - podnieś: %s (+%s)" % [DANE[typ]["nazwa"], Game.zl(DANE[typ]["kaucja"])]
 
 ## Podniesienie przedmiotu (wywoływane przez gracza po E lub najechaniu wózkiem).
 func interakcja(_gracz: Node3D) -> void:
@@ -173,7 +173,7 @@ func interakcja(_gracz: Node3D) -> void:
 		Sfx.graj("blad")  # plecak pełny
 		return
 	_zebrane = true
-	# Zgłoszenie do systemu zleceń — pasujące zlecenie samo złapie swoje
+	# Zgłoszenie do systemu zleceń - pasujące zlecenie samo złapie swoje
 	# zdarzenie, reszta zgłoszeń jest po prostu ignorowana.
 	if kategoria(typ) == "zlom":
 		Game.postep_zlecenia("zebrano_zlom")
@@ -201,7 +201,7 @@ func interakcja(_gracz: Node3D) -> void:
 		Sfx.graj("zlota")
 		Game.pokaz_komunikat("ZŁOTA BUTELKA PO PIWIE! Warta aż %s kaucji!" % Game.zl(wynik["kaucja"]))
 	elif kategoria(typ) == "zlom":
-		# Złom leci na skup do Zdziśka — butelkomat go nie przyjmie
+		# Złom leci na skup do Zdziśka - butelkomat go nie przyjmie
 		Game.statystyki["zlom"] += 1
 		Game.postep_wyzwania("zlom")
 		Sfx.graj("brzek", -8.0, 1.1)
@@ -209,14 +209,14 @@ func interakcja(_gracz: Node3D) -> void:
 			Game.wstrzasnij(0.12)
 			Game.pokaz_komunikat("AKUMULATOR! Ciężki jak sumienie sąsiada. Zdzisiek da za niego %s!" % Game.zl(wynik["kaucja"]))
 		else:
-			Game.pokaz_komunikat("%s — prosto na skup (%s). %s" % [
+			Game.pokaz_komunikat("%s - prosto na skup (%s). %s" % [
 				DANE[typ]["nazwa"].capitalize(), Game.zl(wynik["kaucja"]),
 				["Miedź to pewniak.", "Zdzisiek to weźmie.", "Kilogramy się liczą.", "Złom nie śmierdzi."].pick_random(),
 			])
 	else:
-		# Wysokość "blipa" rośnie z combo — im dłuższa seria, tym wyższy ton
+		# Wysokość "blipa" rośnie z combo - im dłuższa seria, tym wyższy ton
 		Sfx.graj("podnies", 0.0, 1.0 + 0.1 * minf(wynik["combo"], 8))
-		Game.pokaz_komunikat("%s (+%s) — %s" % [
+		Game.pokaz_komunikat("%s (+%s) - %s" % [
 			dane["nazwa"].capitalize(), Game.zl(wynik["kaucja"]), Game.losowy_tekst_podnoszenia()
 		])
 	_znikaj()

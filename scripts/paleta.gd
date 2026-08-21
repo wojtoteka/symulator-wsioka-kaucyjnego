@@ -1,5 +1,5 @@
 class_name Paleta
-## PALETA KOLORÓW — spójny, lekko nasycony low-poly look
+## PALETA KOLORÓW - spójny, lekko nasycony low-poly look
 ## "polskiego osiedla o złotej godzinie". Jedno źródło prawdy:
 ## zmiana tutaj przemalowuje całą scenę.
 
@@ -16,7 +16,7 @@ const LINIA := Color(0.88, 0.88, 0.84)
 const KAMIEN := Color(0.44, 0.43, 0.41)
 
 # --- Architektura ---
-# Bloki z wielkiej płyty po "termomodernizacji" — brudny beż jako baza,
+# Bloki z wielkiej płyty po "termomodernizacji" - brudny beż jako baza,
 # a charakteru dodają kolorowe elewacje (PASTELE) losowane per blok.
 const BLOK := Color(0.66, 0.62, 0.55)
 const OKNO_CIEMNE := Color(0.14, 0.21, 0.32)

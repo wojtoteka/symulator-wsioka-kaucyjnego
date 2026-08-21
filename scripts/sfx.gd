@@ -1,6 +1,6 @@
 extends Node
 ## SFX (autoload "Sfx")
-## Proceduralne dźwięki-placeholdery — generowane w kodzie przy starcie,
+## Proceduralne dźwięki-placeholdery - generowane w kodzie przy starcie,
 ## więc projekt nie potrzebuje żadnych plików audio.
 ## Użycie: Sfx.graj("podnies")  albo z wyższym tonem: Sfx.graj("podnies", 0.0, 1.3)
 
@@ -10,8 +10,8 @@ var _dzwieki := {}                            # nazwa -> AudioStreamWAV
 var _gracze: Array[AudioStreamPlayer] = []    # pula odtwarzaczy
 var _petla_disco: AudioStreamWAV = null       # generowana leniwie
 
-# --- KLASYKI DISCO POLO (music/*.mp3) — odpalają się przy wielkich momentach ---
-# Wrzuć do folderu music/ dowolną liczbę piosenek — gra losuje raz tę, raz tę.
+# --- KLASYKI DISCO POLO (music/*.mp3) - odpalają się przy wielkich momentach ---
+# Wrzuć do folderu music/ dowolną liczbę piosenek - gra losuje raz tę, raz tę.
 const KLASYK_START := 30.0  # od której sekundy utworu grać (refren!)
 const KLASYK_CZAS := 15.0   # ile sekund klasyka leci, zanim się wyciszy
 var _klasyk: AudioStreamPlayer
@@ -30,7 +30,7 @@ func _ready() -> void:
 	_wczytaj_klasyk()
 
 ## Wczytuje WSZYSTKIE pliki muzyczne z res://music/.
-## (W wyeksportowanej grze pliki widnieją jako .import/.remap — obcinamy.)
+## (W wyeksportowanej grze pliki widnieją jako .import/.remap - obcinamy.)
 func _wczytaj_klasyk() -> void:
 	var katalog := DirAccess.open("res://music")
 	if katalog == null:
@@ -45,13 +45,13 @@ func _wczytaj_klasyk() -> void:
 				_klasyki.append(strumien)
 
 ## WIELKI MOMENT = KLASYK. Losuje utwór z music/, gra refren i sam się wycisza.
-## Bez plików w music/ — zwykła fanfara (gra działa też bez mp3).
+## Bez plików w music/ - zwykła fanfara (gra działa też bez mp3).
 func odpal_klasyk() -> void:
 	if _klasyki.is_empty():
 		graj("legenda")
 		return
 	if _klasyk.playing:
-		return   # klasyk już leci — nie przerywamy klasyka
+		return   # klasyk już leci - nie przerywamy klasyka
 	Game.pokaz_komunikat("Z osiedlowego głośnika leci KLASYK. Głośniej, sąsiad i tak nie śpi!")
 	var strumien: AudioStream = _klasyki.pick_random()
 	# Start od refrenu, ale nie poza końcem utworu (dla krótkich plików)
@@ -70,7 +70,7 @@ func graj(nazwa: String, glosnosc_db := 0.0, ton := 1.0) -> void:
 		return
 	_graj_strumien(_dzwieki[nazwa], glosnosc_db, ton)
 
-## Losowy okrzyk wsioka ("hop!", pisk itd.) — przy podnoszeniu butelek.
+## Losowy okrzyk wsioka ("hop!", pisk itd.) - przy podnoszeniu butelek.
 func graj_okrzyk() -> void:
 	graj("okrzyk%d" % (randi_range(1, 3)), -3.0, randf_range(0.9, 1.15))
 
@@ -80,7 +80,7 @@ func graj_okrzyk() -> void:
 func graj_bandyta(ile_butelek: int) -> void:
 	var cyknięcia := clampi(ile_butelek, 4, 18)
 	var probki := PackedFloat32Array()
-	# Cyknięcia: odstępy maleją od 0.14 s do 0.04 s — efekt "kręcących się bębnów"
+	# Cyknięcia: odstępy maleją od 0.14 s do 0.04 s - efekt "kręcących się bębnów"
 	for i in cyknięcia:
 		var postep := float(i) / cyknięcia
 		probki.append_array(_ton(1100 + postep * 500, 1300 + postep * 500, 0.025, 0.3))
@@ -150,7 +150,7 @@ func _generuj_dzwieki() -> void:
 		_szum(0.04, 0.5), _ton(260, 150, 0.09, 0.45, "kwadrat"), _cisza(0.09),
 		_szum(0.04, 0.5), _ton(240, 140, 0.09, 0.45, "kwadrat"),
 	]))
-	# Wsiokometr 100% — wielka fanfara legendy osiedla
+	# Wsiokometr 100% - wielka fanfara legendy osiedla
 	_dzwieki["legenda"] = _wav(_sklej([
 		_ton(523, 523, 0.11), _ton(659, 659, 0.11), _ton(784, 784, 0.11),
 		_ton(1047, 1047, 0.11), _ton(784, 784, 0.11), _ton(1047, 1047, 0.4, 0.45),
@@ -170,7 +170,7 @@ func _generuj_dzwieki() -> void:
 	]))
 	# Czkawka pijanego wsioka
 	_dzwieki["czkawka"] = _wav(_sklej([_ton(400, 850, 0.07, 0.25), _ton(850, 500, 0.04, 0.15)]))
-	# Jęk kacowy — niski, cierpiący
+	# Jęk kacowy - niski, cierpiący
 	_dzwieki["jek"] = _wav(_sklej([_ton(220, 150, 0.35, 0.22), _ton(150, 120, 0.25, 0.15)]))
 	# Kroki: miękki na trawie, twardszy "klik" na betonie
 	_dzwieki["krok_trawa"] = _wav(_szum(0.05, 0.2))
@@ -184,7 +184,7 @@ func _generuj_dzwieki() -> void:
 	]))
 
 ## Zapętlona "kompozycja" disco polo (do okna bloku). Stopa, hi-hat,
-## bas na kwadracie i wpadająca w ucho przygrywka — 100% syntezy.
+## bas na kwadracie i wpadająca w ucho przygrywka - 100% syntezy.
 func petla_disco() -> AudioStreamWAV:
 	if _petla_disco == null:
 		_petla_disco = _generuj_disco()

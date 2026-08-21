@@ -1,10 +1,10 @@
 extends Area3D
-## DRZWI — teleportują gracza (wejście i wyjście z Biedronki).
+## DRZWI - teleportują gracza (wejście i wyjście z Biedronki).
 ## world.gd ustawia: cel, obrot_y, etykieta, komunikat.
 
 var cel := Vector3.ZERO       # dokąd teleportować gracza
 var obrot_y := 0.0            # obrót gracza po teleporcie (radiany)
-var etykieta := "E — wejdź"
+var etykieta := "E - wejdź"
 var komunikat := ""
 
 func _ready() -> void:

@@ -1,11 +1,11 @@
 extends Node
-## AUTOTESTY (narzędzie deweloperskie) — uruchamiane przez:
+## AUTOTESTY (narzędzie deweloperskie) - uruchamiane przez:
 ##   godot --headless -- --autostart --testy
 ## Sprawdzają logikę, której nie da się przeklikać w trybie headless:
 ## plecak z kategoriami, wyprzedaż w butelkomacie/skupie, zlecenia z JSON-a.
 ## Wypisują raport i kończą grę kodem wyjścia 0 (sukces) albo 1 (błąd).
 
-## Plan osiedla (JEZDNIE, BUDYNKI, czy_zajete) — patrz scripts/world.gd
+## Plan osiedla (JEZDNIE, BUDYNKI, czy_zajete) - patrz scripts/world.gd
 const Swiat := preload("res://scripts/world.gd")
 const Auto := preload("res://scripts/auto.gd")
 
@@ -131,7 +131,7 @@ func _test_kurs_zlomu() -> void:
 	var w_zakresie := Game.kurs_zlomu >= Balans.SKUP_MNOZNIK_MIN and Game.kurs_zlomu <= Balans.SKUP_MNOZNIK_MAX
 	_sprawdz("kurs mieści się w widełkach z balansu", w_zakresie)
 	_sprawdz("opis kursu nie jest pusty", Game.opis_kursu().length() > 0)
-	# Butelkomat ma wnerwiać, ale nie blokować. Zapchanie niczego nie odbiera —
+	# Butelkomat ma wnerwiać, ale nie blokować. Zapchanie niczego nie odbiera -
 	# gracz traci kilka sekund i jeden kopniak. Te dwa warunki pilnują, żeby
 	# przy kolejnym podkręcaniu awaryjności nie zrobić z automatu ściany.
 	_sprawdz("zapchany butelkomat zawsze da się odetkać", Balans.SZANSA_ODETKANIA > 0.5)
@@ -163,23 +163,23 @@ func _test_kolizje() -> void:
 	_sprawdz("krzak jest przeszkodą", _czy_cos_stoi(Vector3(-13.5, 0.25, 16)))
 	_sprawdz("sterta opon jest przeszkodą", _czy_cos_stoi(Vector3(36.5, 0.5, 15)))
 	# Działka przy x=-20: płotek stoi, ale furtka (środek boku od alejki)
-	# musi zostać przejściem — ogrodzenie bez wejścia to pułapka, nie ogródek
+	# musi zostać przejściem - ogrodzenie bez wejścia to pułapka, nie ogródek
 	# Północny bok działki przy x=-21.5 oraz środek jej furtki (bok od alejki)
 	_sprawdz("płotek działki jest twardy", _czy_cos_stoi(Vector3(-21.5, 0.5, 41.5)))
 	_sprawdz("furtka w działce jest przejściem", not _czy_cos_stoi(Vector3(-16.5, 0.5, 47.5)))
 	# Rampa przeniesiona z obwodnicy na plac garażowy
-	# Rampa to pochylona deska grubości 14 cm — trafienie w nią punktem jest
+	# Rampa to pochylona deska grubości 14 cm - trafienie w nią punktem jest
 	# loterią, więc mierzymy ją promieniem z góry: nad placem coś wystaje
 	# ponad grunt, nad jezdnią już nie.
 	_sprawdz("nad jezdnią (x=30) jest czysto", _wysokosc_terenu(30, 16) < 0.2)
 	_sprawdz("rampa stoi na placu garażowym", _wysokosc_terenu(42, 12) > 0.2)
 	# Korona drzewa musi zatrzymywać wysięgnik kamery, ale NIE gracza.
-	# Bez tej osłony kamera TPP wjeżdżała w liście i — bo bryły mają kontur
-	# rysowany od środka — pół ekranu robiło się czarne. Drzewo stoi w (26,0,28).
+	# Bez tej osłony kamera TPP wjeżdżała w liście i - bo bryły mają kontur
+	# rysowany od środka - pół ekranu robiło się czarne. Drzewo stoi w (26,0,28).
 	#
 	# Próbkę bierzemy 60 cm OBOK pnia: drzewa mają losową skalę (0,85-1,3),
 	# więc przy tych większych pień sięga powyżej 2,55 m i punkt na osi trafiałby
-	# raz w pień (warstwa świata), a raz nie — test wychodził losowo.
+	# raz w pień (warstwa świata), a raz nie - test wychodził losowo.
 	var w_koronie := Vector3(26.6, 2.55, 28)
 	_sprawdz("korona drzewa zasłania wysięgnik kamery",
 		_czy_cos_stoi(w_koronie, Balans.WARSTWA_KAMERY))
@@ -187,7 +187,7 @@ func _test_kolizje() -> void:
 
 ## Czy cokolwiek nie stoi tam, gdzie już coś jest. Ten test powstał po tym,
 ## jak w grze znalazło się pięć drzew rosnących na obwodnicy, drzewo i krzak
-## w środku bloku oraz dwa kontenery na jezdni — a sama obwodnica biegła
+## w środku bloku oraz dwa kontenery na jezdni - a sama obwodnica biegła
 ## przez Biedronkę, więc auta wyjeżdżały ze sklepu.
 func _test_rozmieszczenie() -> void:
 	print("\n[9] Nic nie stoi na jezdni ani w budynku")
@@ -198,12 +198,12 @@ func _test_rozmieszczenie() -> void:
 			if Swiat.czy_zajete(p.x, p.z):
 				winne.append("(%.0f, %.0f)" % [p.x, p.z])
 		_sprawdz("%s: żaden nie stoi w zajętym miejscu%s" % [
-			grupa, "" if winne.is_empty() else " — winne: " + ", ".join(winne),
+			grupa, "" if winne.is_empty() else " - winne: " + ", ".join(winne),
 		], winne.is_empty())
 	# Nic, co zajmuje teren, nie może przenikać jezdni. Auta jadą po torze,
 	# a nie po fizyce, więc nachodzące się prostokąty oznaczają auta w środku
 	# budynku (tak było z Biedronką) albo płotek na asfalcie (tak było
-	# z działkami — wszystkie cztery wchodziły metrem na obwodnicę).
+	# z działkami - wszystkie cztery wchodziły metrem na obwodnicę).
 	var kolidujace: Array[String] = []
 	for pas in Swiat.JEZDNIE:
 		for i in Swiat.BUDYNKI.size():
@@ -213,7 +213,7 @@ func _test_rozmieszczenie() -> void:
 			if _nachodza(Swiat.obrys_dzialki(x), pas):
 				kolidujace.append("działka x=%.1f" % x)
 	_sprawdz("nic nie przenika jezdni%s" % (
-		"" if kolidujace.is_empty() else " — kolizje: " + ", ".join(kolidujace)
+		"" if kolidujace.is_empty() else " - kolizje: " + ", ".join(kolidujace)
 	), kolidujace.is_empty())
 	# Działki nie mogą też wchodzić w budę Zdziśka na końcu alejki
 	var na_skupie: Array[String] = []
@@ -221,7 +221,7 @@ func _test_rozmieszczenie() -> void:
 		if _nachodza(Swiat.obrys_dzialki(x), Swiat.BUDYNKI[5]):
 			na_skupie.append("x=%.1f" % x)
 	_sprawdz("działki nie wchodzą w skup złomu%s" % (
-		"" if na_skupie.is_empty() else " — " + ", ".join(na_skupie)
+		"" if na_skupie.is_empty() else " - " + ", ".join(na_skupie)
 	), na_skupie.is_empty())
 	# Fanty też nie mogą lądować w ścianie
 	var w_scianie := 0
@@ -233,7 +233,7 @@ func _test_rozmieszczenie() -> void:
 
 ## Radar i strzałka nawigacji. Test powstał, bo minimapa była ODWRÓCONA:
 ## przy yaw=0 zgadzała się przypadkiem, więc błąd ujawniał się dopiero po
-## obróceniu postaci — idąc do celu widziało się kropkę uciekającą w drugą
+## obróceniu postaci - idąc do celu widziało się kropkę uciekającą w drugą
 ## stronę tarczy. Dlatego sprawdzamy oba przypadki: bez obrotu i po obrocie.
 func _test_kompas() -> void:
 	print("\n[10] Radar i strzałka wskazują właściwą stronę")
@@ -281,7 +281,7 @@ func _test_cel_i_rozliczenie() -> void:
 		Game.cel_osiagniety)
 	Game.zaplac_mandat(11.0, "test")
 	_sprawdz("mandat nie odbiera raz zdobytego celu", Game.cel_osiagniety)
-	# Narzędzia nie mogą dotykać zapisu gracza — testy i zrzuty przewijają dni
+	# Narzędzia nie mogą dotykać zapisu gracza - testy i zrzuty przewijają dni
 	# i nabijają kasę, więc bez blokady każdy przebieg dopisywałby graczowi
 	# kilkadziesiąt złotych do banku kariery
 	_sprawdz("tryb narzędziowy jest włączony podczas testów", Game.tryb_narzedziowy)
@@ -322,7 +322,7 @@ func _test_limit_lotow() -> void:
 		is_zero_approx(Game.nagroda_za_lot(50.0)))
 
 ## Ruch na obwodnicy. Auta jadą po wspólnym torze i NIE MAJĄ ze sobą kolizji,
-## więc bez pilnowania odstępu szybsze wjeżdżało w wolniejsze na wylot — dwa
+## więc bez pilnowania odstępu szybsze wjeżdżało w wolniejsze na wylot - dwa
 ## nadwozia jedno w drugim wyglądały jak tramwaj. Bug ujawniał się dopiero po
 ## kilkudziesięciu sekundach jazdy, dlatego test przewija czas.
 func _test_ruch_uliczny() -> void:
@@ -339,12 +339,12 @@ func _test_ruch_uliczny() -> void:
 	_sprawdz("między progami auto zwalnia płynnie", posrednia > 0.0 and posrednia < 9.0)
 	if auta.is_empty():
 		return
-	# Że auta w ogóle jadą — sprawdzamy na żywej scenie
+	# Że auta w ogóle jadą - sprawdzamy na żywej scenie
 	var start_pierwszego: float = auta[0].progress
 	for i in 60:
 		await get_tree().process_frame
 	_sprawdz("auta faktycznie jadą", not is_equal_approx(auta[0].progress, start_pierwszego))
-	# Że NIGDY na siebie nie wjadą — na żywej scenie tego nie udowodnimy:
+	# Że NIGDY na siebie nie wjadą - na żywej scenie tego nie udowodnimy:
 	# usterka wychodziła dopiero po kilkudziesięciu sekundach, a w trybie
 	# headless liczba klatek nie przekłada się na czas gry. Dlatego kolumnę
 	# przewijamy w czystej symulacji: te same wzory, ustalony krok czasu,

@@ -1,6 +1,6 @@
 extends StaticBody3D
-## KIOSK "RUCH" — obowiązkowy element polskiego krajobrazu.
-## E = zdrapka za 3 zł. Zwykle nic, czasem drobne... a raz na sto —
+## KIOSK "RUCH" - obowiązkowy element polskiego krajobrazu.
+## E = zdrapka za 3 zł. Zwykle nic, czasem drobne... a raz na sto -
 ## JACKPOT 100 zł i sława na całe osiedle.
 
 func _ready() -> void:
@@ -8,12 +8,12 @@ func _ready() -> void:
 	add_to_group("bijalne")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color, emisja := false) -> StandardMaterial3D:
 	return Styl.bryla(kolor, Styl.KONTUR_OBIEKT, emisja)
 
 func _zbuduj_bryle() -> void:
-	# Budka — ciemna zieleń, klasyka
+	# Budka - ciemna zieleń, klasyka
 	var budka := MeshInstance3D.new()
 	var pudlo := BoxMesh.new()
 	pudlo.size = Vector3(2.2, 2.5, 1.8)
@@ -50,7 +50,7 @@ func _zbuduj_bryle() -> void:
 	add_child(kolizja)
 
 func podpowiedz() -> String:
-	return "E — kup zdrapkę (%s)" % Game.zl(Balans.CENA_ZDRAPKI)
+	return "E - kup zdrapkę (%s)" % Game.zl(Balans.CENA_ZDRAPKI)
 
 func interakcja(_gracz: Node3D) -> void:
 	if not Game.wydaj_kase(Balans.CENA_ZDRAPKI):
@@ -82,9 +82,9 @@ func interakcja(_gracz: Node3D) -> void:
 		Game.pokaz_komunikat("Wygrałeś 1 zł. Czyli -2 zł netto. Matematyka boli.")
 	else:
 		Sfx.graj("blad", -6.0)
-		Game.pokaz_komunikat("Nic. \"Następnym razem\" — napisała zdrapka. Kłamie.")
+		Game.pokaz_komunikat("Nic. \"Następnym razem\" - napisała zdrapka. Kłamie.")
 
-## Cios w kiosk — bez szans.
+## Cios w kiosk - bez szans.
 func oberwij(_gracz: Node3D) -> void:
 	Sfx.graj("brzek", -8.0)
 	Game.pokaz_komunikat("Szyba pancerna. Kioskarka nawet nie mrugnęła.")

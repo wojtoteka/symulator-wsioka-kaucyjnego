@@ -1,5 +1,5 @@
 extends Area3D
-## PIES NA ŁAŃCUCHU — stoi przy budzie obok bloku. Gdy gracz podejdzie
+## PIES NA ŁAŃCUCHU - stoi przy budzie obok bloku. Gdy gracz podejdzie
 ## za blisko, szczeka i szarpie się na łańcuchu (nie może dosięgnąć).
 ## Można go pogłaskać (E)... na własne ryzyko. Bicie psa = hańba.
 
@@ -36,7 +36,7 @@ func _ready() -> void:
 	strefa.body_entered.connect(_ktos_wszedl)
 	strefa.body_exited.connect(_ktos_wyszedl)
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.postac(kolor)
 
@@ -107,7 +107,7 @@ func _zbuduj_psa() -> void:
 	ogon.rotation.x = -0.7
 	ogon.position = Vector3(0, 0.5, -0.4)
 	_pies.add_child(ogon)
-	# Łańcuch — kilka ciemnych kulek między budą a psem
+	# Łańcuch - kilka ciemnych kulek między budą a psem
 	for i in 4:
 		var ogniwo := MeshInstance3D.new()
 		var kulka := SphereMesh.new()
@@ -144,9 +144,9 @@ func _szarpniecie() -> void:
 	tw.tween_property(_pies, "position", cel, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_pies, "position", _pozycja_bazowa, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
-## Głaskanie psa (E) — hazard emocjonalny.
+## Głaskanie psa (E) - hazard emocjonalny.
 func podpowiedz() -> String:
-	return "E — pogłaszcz psa (na własne ryzyko)"
+	return "E - pogłaszcz psa (na własne ryzyko)"
 
 func interakcja(gracz: Node3D) -> void:
 	if randf() > Balans.SZANSA_ZLEGO_PSA:
@@ -156,10 +156,10 @@ func interakcja(gracz: Node3D) -> void:
 		_merdaj()
 	else:
 		Sfx.graj("szczek", 2.0, 1.15)
-		Game.pokaz_komunikat("Pies NIE był w nastroju. Prawie zawał — gleba ze strachu.")
+		Game.pokaz_komunikat("Pies NIE był w nastroju. Prawie zawał - gleba ze strachu.")
 		gracz.gleba()
 
-## Próba uderzenia psa — absolutnie nie.
+## Próba uderzenia psa - absolutnie nie.
 func oberwij(gracz: Node3D) -> void:
 	Sfx.graj("szczek", 4.0, 0.9)
 	Game.dodaj_wsiokometr(-15.0)

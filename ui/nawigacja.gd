@@ -1,5 +1,5 @@
 extends Control
-## STRZAŁKA NAWIGACJI — nad radarem. Sama decyduje, co jest teraz
+## STRZAŁKA NAWIGACJI - nad radarem. Sama decyduje, co jest teraz
 ## najważniejsze (pełny plecak? złom do sprzedania? brak zlecenia?)
 ## i pokazuje kierunek oraz dystans do tego celu.
 ##
@@ -48,7 +48,7 @@ func _wybierz_cel() -> void:
 	var ma_zlom := Game.ile_w_plecaku("zlom") > 0
 
 	if pelny and ma_butelki:
-		_ustaw("butelkomat", "PLECAK PEŁNY — butelkomat")
+		_ustaw("butelkomat", "PLECAK PEŁNY - butelkomat")
 		if _cel:
 			return
 	if ma_zlom and Game.skup_otwarty:
@@ -74,7 +74,7 @@ func _ustaw(nazwa: String, opis: String) -> void:
 			_opis = opis
 			return
 
-## Gdy nie ma pilniejszych spraw — prowadzimy do najbliższej butelki.
+## Gdy nie ma pilniejszych spraw - prowadzimy do najbliższej butelki.
 func _najblizszy_fant() -> void:
 	var najlepszy: Node3D = null
 	var najblizej := INF
@@ -94,7 +94,7 @@ func _draw() -> void:
 		return
 	var roznica: Vector3 = _cel.global_position - _gracz.global_position
 	var dystans := Vector2(roznica.x, roznica.z).length()
-	# Kąt do celu względem kierunku patrzenia gracza. Ten sam Kompas co radar —
+	# Kąt do celu względem kierunku patrzenia gracza. Ten sam Kompas co radar -
 	# poprzedni wzór zgadzał się dla celów PRZED graczem, ale cele z boku
 	# wskazywał lustrzanie (obiekt po prawej -> strzałka w lewo).
 	var yaw: float = _gracz.global_rotation.y

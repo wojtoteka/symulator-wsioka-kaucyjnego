@@ -1,9 +1,9 @@
 extends StaticBody3D
-## ŚMIETNIK — do przeszukiwania (E). Dwa rodzaje:
+## ŚMIETNIK - do przeszukiwania (E). Dwa rodzaje:
 ##  - KONTENER: duży osiedlowy kontener (więcej szans na łup)
 ##  - KOSZ: mały kosz uliczny przy chodniku
-## Po interakcji wypada 0–3 przedmiotów. Każdy śmietnik można
-## przeszukać 1–2 razy, potem jest "przegrzebany".
+## Po interakcji wypada 0-3 przedmiotów. Każdy śmietnik można
+## przeszukać 1-2 razy, potem jest "przegrzebany".
 
 enum Rodzaj { KONTENER, KOSZ }
 
@@ -44,7 +44,7 @@ func oberwij(_gracz: Node3D) -> void:
 	await get_tree().create_timer(0.6, false).timeout
 	_zajety = false
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -73,7 +73,7 @@ func _zbuduj_bryle() -> void:
 		kolizja.shape = ksztalt
 		kolizja.position = Vector3(0, 0.675, 0)
 	else:
-		# Kosz uliczny — ciemny walec
+		# Kosz uliczny - ciemny walec
 		var korpus := MeshInstance3D.new()
 		var walec := CylinderMesh.new()
 		walec.top_radius = 0.3
@@ -93,8 +93,8 @@ func _zbuduj_bryle() -> void:
 func podpowiedz() -> String:
 	var nazwa := "kontener" if rodzaj == Rodzaj.KONTENER else "kosz"
 	if _przeszukania <= 0:
-		return "%s — już przegrzebany" % nazwa.capitalize()
-	return "E — przeszukaj %s" % nazwa
+		return "%s - już przegrzebany" % nazwa.capitalize()
+	return "E - przeszukaj %s" % nazwa
 
 func interakcja(_gracz: Node3D) -> void:
 	if _zajety:
@@ -115,7 +115,7 @@ func interakcja(_gracz: Node3D) -> void:
 	_zajety = false
 	if not is_inside_tree():
 		return
-	# Straż Miejska nie śpi — grzebanie na oczach patrolu kosztuje,
+	# Straż Miejska nie śpi - grzebanie na oczach patrolu kosztuje,
 	# a czasem kończy się regularną pogonią przez całe osiedle
 	for straznik in get_tree().get_nodes_in_group("straz"):
 		if straznik.global_position.distance_to(global_position) < Balans.ZASIEG_STRAZY:
@@ -129,7 +129,7 @@ func interakcja(_gracz: Node3D) -> void:
 		Sfx.graj("szczur")
 		Game.pokaz_komunikat("Z kontenera wyskoczył SZCZUR! O mało zawał...")
 		return
-	# Losujemy 0–3 przedmioty (kontener ma lepsze szanse niż kosz)
+	# Losujemy 0-3 przedmioty (kontener ma lepsze szanse niż kosz)
 	var ile := 0
 	var los := randf()
 	if rodzaj == Rodzaj.KONTENER:
@@ -152,7 +152,7 @@ func _wypluj_przedmiot() -> void:
 	przedmiot.position = global_position + Vector3(cos(kat) * dystans, 0, sin(kat) * dystans)
 	przedmiot.scale = Vector3.ONE * 0.01
 	get_parent().add_child(przedmiot)
-	# Animacja "wyskoku" — rośnie z małym odbiciem
+	# Animacja "wyskoku" - rośnie z małym odbiciem
 	var tw := przedmiot.create_tween()
 	tw.tween_property(przedmiot, "scale", Vector3.ONE, 0.25)\
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

@@ -1,5 +1,5 @@
 extends Node3D
-## ŚWIAT — buduje całe osiedle proceduralnie z prostych brył:
+## ŚWIAT - buduje całe osiedle proceduralnie z prostych brył:
 ## trawnik, chodniki, bloki z oknami, Biedronkę z butelkomatem,
 ## śmietniki, ławki, trzepak, sąsiadkę i rozrzucone butelki.
 ## Układ mapy: gracz startuje na południu (z=22), Biedronka na północy (z=-34).
@@ -28,7 +28,7 @@ const Skuter := preload("res://scripts/skuter.gd")
 const Automat := preload("res://scripts/automat.gd")
 const HUD := preload("res://ui/hud.gd")
 
-# Wnętrze Biedronki jest zbudowane POD ZIEMIĄ (niewidoczne z mapy) —
+# Wnętrze Biedronki jest zbudowane POD ZIEMIĄ (niewidoczne z mapy) -
 # drzwi teleportują do środka i z powrotem
 const WNETRZE := Vector3(60, -50, -60)            # środek podziemnego sklepu
 const WEJSCIE_SKLEPU := WNETRZE + Vector3(0, 0.1, 3.2)   # lądowanie w środku
@@ -38,27 +38,27 @@ const ILE_BUTELEK_NA_START := Balans.ILE_BUTELEK_NA_START
 const ILE_KAMIENI := Balans.ILE_KAMIENI
 
 # =============================================================================
-#  PLAN OSIEDLA — jedno źródło prawdy
+#  PLAN OSIEDLA - jedno źródło prawdy
 # =============================================================================
 # Prostokąty [x_min, x_max, z_min, z_max]. Powstaje z nich asfalt i tor aut,
 # a przede wszystkim: sprawdzenie, czy dane miejsce jest wolne.
 #
 # Dlaczego to musi być DANE, a nie liczby rozsypane po kodzie: gdy pozycje
 # drzew, śmietników i jezdni żyją osobno, prędzej czy później drzewo wyrasta
-# na środku ulicy, a kontener ląduje w ścianie bloku. Tak właśnie było —
+# na środku ulicy, a kontener ląduje w ścianie bloku. Tak właśnie było -
 # pięć drzew stało na obwodnicy, jedno w małym bloku, dwa kontenery na
 # jezdni, a sama obwodnica przechodziła przez Biedronkę (auta dosłownie
 # wyjeżdżały ze sklepu). Teraz pilnuje tego test [9] w autotest.gd.
 
 const JEZDNIE: Array = [
-	[-33.0, 33.0, -49.0, -43.0],   # północ — ZA Biedronką, nie przez nią
+	[-33.0, 33.0, -49.0, -43.0],   # północ - ZA Biedronką, nie przez nią
 	[-33.0, 33.0, 35.0, 41.0],     # południe
 	[-33.0, -27.0, -49.0, 41.0],   # zachód
 	[27.0, 33.0, -49.0, 41.0],     # wschód
 ]
 
 # Obrysy budynków POWIĘKSZONE o to, co z nich wystaje (balkony sięgają
-# 1,1 m poza ścianę) — inaczej "wolne" miejsce okazuje się być pod balkonem.
+# 1,1 m poza ścianę) - inaczej "wolne" miejsce okazuje się być pod balkonem.
 const BUDYNKI: Array = [
 	[-11.0, 11.0, -40.0, -28.0],     # Biedronka
 	[-24.0, -14.8, -6.0, 14.0],      # blok lewy (balkony od wschodu)
@@ -85,7 +85,7 @@ static func obrys_dzialki(srodek_x: float) -> Array:
 		DZIALKA_Z - DZIALKA_GLEBOKOSC / 2.0, DZIALKA_Z + DZIALKA_GLEBOKOSC / 2.0,
 	]
 
-## Czy w danym punkcie stoi jezdnia albo budynek — czyli miejsce, w którym
+## Czy w danym punkcie stoi jezdnia albo budynek - czyli miejsce, w którym
 ## NIC nie powinno stać. "margines" poszerza strefę: drzewo o koronie metrowej
 ## nie może rosnąć dokładnie na krawędzi asfaltu, bo i tak będzie nad nim wisieć.
 ##
@@ -95,7 +95,7 @@ static func obrys_dzialki(srodek_x: float) -> Array:
 static func czy_zajete(x: float, z: float, margines := 0.0) -> bool:
 	return _w_strefach(JEZDNIE + BUDYNKI, x, z, margines)
 
-## Jak wyżej, ale dolicza ogrodzone działki — używane przy losowaniu miejsc
+## Jak wyżej, ale dolicza ogrodzone działki - używane przy losowaniu miejsc
 ## dla butelek i złomu, żeby łup nie lądował za cudzym płotem.
 static func czy_zajete_lub_dzialka(x: float, z: float, margines := 0.0) -> bool:
 	if czy_zajete(x, z, margines):
@@ -112,7 +112,7 @@ static func _w_strefach(strefy: Array, x: float, z: float, margines: float) -> b
 			return true
 	return false
 
-var _neon_napis: Label3D           # szyld "BIEDRONKA" — miga jak zepsuty neon
+var _neon_napis: Label3D           # szyld "BIEDRONKA" - miga jak zepsuty neon
 
 # Bufory pod MultiMesh: drobiazgi z działek zbierane przed złożeniem w jeden
 # węzeł. Dzięki temu setki sztachet kosztują tyle, co jeden obiekt.
@@ -133,7 +133,7 @@ func _ready() -> void:
 	_detale_drogi()
 	_smietniki()
 	_kamienie()
-	_garaze()          # blaszaki, rampy i skuter — plac zabaw dla kaskaderów
+	_garaze()          # blaszaki, rampy i skuter - plac zabaw dla kaskaderów
 	_dzialki()         # ogródki działkowe za osiedlem + SKUP ZŁOMU
 	_tablica_ogloszen()
 	_npce()
@@ -146,10 +146,10 @@ func _ready() -> void:
 
 # --- Pomocnicze funkcje budowania brył ---
 
-## Materiał świata — cały styl (toon, nasycenie, kontur) siedzi w Styl.
+## Materiał świata - cały styl (toon, nasycenie, kontur) siedzi w Styl.
 ## Grubość konturu dobiera się sama z wielkości bryły: płaskie płyty terenu
 ## i jezdni zostają bez obwódki, budynki dostają grubą kreskę.
-## Domyślnie BEZ konturu — bo tę funkcję wołają też płaskie detale
+## Domyślnie BEZ konturu - bo tę funkcję wołają też płaskie detale
 ## (pasy na jezdni, linie parkingowe), którym obwódka zjadłaby całą bryłę.
 ## Kontur dokładają _pudlo i _walec, które znają wymiary obiektu.
 func _material(kolor: Color, emisja := false, kontur := 0.0) -> StandardMaterial3D:
@@ -182,7 +182,7 @@ func _pudlo(pozycja: Vector3, rozmiar: Vector3, kolor: Color, kolizja := true,
 	return cialo
 
 ## Walec (słupek latarni, filar altanki, beczka).
-## Domyślnie Z KOLIZJĄ — wcześniej walce były czysto wizualne i dało się
+## Domyślnie Z KOLIZJĄ - wcześniej walce były czysto wizualne i dało się
 ## przejść na wylot przez latarnię czy filar, co od razu psuło wrażenie
 ## realnego miejsca. "kolizja = false" zostaje dla drobiazgów na dachu
 ## (anteny) i tam, gdzie ciało fizyczne dokłada się osobno (pnie drzew).
@@ -211,7 +211,7 @@ func _walec(pozycja: Vector3, promien: float, wysokosc: float, kolor: Color,
 		add_child(cialo)
 	return mesh
 
-## Niewidzialna przeszkoda — dla obiektów, których bryła jest zbyt
+## Niewidzialna przeszkoda - dla obiektów, których bryła jest zbyt
 ## poszarpana, żeby opisać ją kształtem 1:1 (płotki ze sztachet, sterty).
 func _przeszkoda(pozycja: Vector3, rozmiar: Vector3) -> StaticBody3D:
 	var cialo := StaticBody3D.new()
@@ -227,14 +227,14 @@ func _przeszkoda(pozycja: Vector3, rozmiar: Vector3) -> StaticBody3D:
 # --- Elementy świata ---
 
 func _swiatlo_i_niebo() -> void:
-	# Mocne, kontrastowe słońce — kreskówka potrzebuje wyraźnych cieni,
+	# Mocne, kontrastowe słońce - kreskówka potrzebuje wyraźnych cieni,
 	# nie miękkiego rozproszonego światła jak w symulatorze architektury
 	var slonce := DirectionalLight3D.new()
 	slonce.rotation_degrees = Vector3(-52, -40, 0)
 	slonce.light_color = Color(1.0, 0.95, 0.83)
 	slonce.light_energy = 1.15
 	slonce.shadow_enabled = true
-	# 0.9 dawało cienie prawie czarne — czytelne, ale wyglądające jak wycięte
+	# 0.9 dawało cienie prawie czarne - czytelne, ale wyglądające jak wycięte
 	# nożyczkami. Odrobinę jaśniejsze i lekko zmiękczone czytają się jak cień,
 	# a nie jak naklejona plama.
 	slonce.shadow_opacity = 0.82
@@ -251,7 +251,7 @@ func _swiatlo_i_niebo() -> void:
 	material_nieba.sky_curve = 0.12       # ostrzejszy gradient = bardziej "rysowane"
 	material_nieba.ground_bottom_color = Color(0.24, 0.42, 0.3)
 	material_nieba.ground_horizon_color = Color(0.62, 0.84, 1.0)
-	# Tarcza słońca na niebie — jest źródłem cieni, więc powinno być widać,
+	# Tarcza słońca na niebie - jest źródłem cieni, więc powinno być widać,
 	# skąd padają. Puste niebo to kolejny drobiazg, który czyta się jako "render".
 	material_nieba.sun_angle_max = 12.0
 	material_nieba.sun_curve = 0.08
@@ -268,7 +268,7 @@ func _swiatlo_i_niebo() -> void:
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.7, 0.85, 1.0)
 	env.fog_density = 0.0022
-	# Poświata — neon, latarnie i złote fanty ładnie "błyszczą"
+	# Poświata - neon, latarnie i złote fanty ładnie "błyszczą"
 	env.glow_enabled = true
 	env.glow_intensity = 0.6
 	env.glow_bloom = 0.15
@@ -277,10 +277,10 @@ func _swiatlo_i_niebo() -> void:
 	# Wysoki whitepoint ratuje jasne ściany przed wypaleniem do bieli
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_white = 2.2
-	# Przymknięta "przysłona" — bez tego trawa i chodniki świecą tak mocno,
+	# Przymknięta "przysłona" - bez tego trawa i chodniki świecą tak mocno,
 	# że cała scena wygląda na prześwietloną, a kolory tracą głębię
 	env.tonemap_exposure = 0.8
-	# Korekcja obrazu — to ona robi najwięcej dla "komiksowego" charakteru
+	# Korekcja obrazu - to ona robi najwięcej dla "komiksowego" charakteru
 	env.adjustment_enabled = true
 	# Zbity kontrast plus mocna saturacja dawały efekt plakatu: kolory ładne,
 	# ale wszystko wyglądało jak nadruk. Skoro detal niosą teraz tekstury
@@ -292,16 +292,16 @@ func _swiatlo_i_niebo() -> void:
 	add_child(srodowisko)
 
 func _teren() -> void:
-	# Trawnik — wielka zielona płyta (jej wierzch to y=0).
+	# Trawnik - wielka zielona płyta (jej wierzch to y=0).
 	# 120x120: mieści osiedle, obwodnicę, garaże na wschodzie i działki na południu.
 	#
 	# To był najbardziej "plastikowy" element całej gry: 120 metrów jednego
 	# koloru czyta się jak arkusz papieru, bo w naturze nie ma płaszczyzny bez
-	# ani jednej plamy. Szum daje przetarcia i wydeptane placki — nadal
+	# ani jednej plamy. Szum daje przetarcia i wydeptane placki - nadal
 	# stylizowane, ale teren wygląda jak teren.
 	_pudlo(Vector3(0, -0.5, 0), Vector3(120, 1, 120), Paleta.TRAWA, true, false,
 		Styl.teren_szum(Paleta.TRAWA, 0.6, 0.15))
-	# Główny chodnik (północ-południe, do Biedronki) — cienki, bez kolizji
+	# Główny chodnik (północ-południe, do Biedronki) - cienki, bez kolizji
 	_pudlo(Vector3(0, 0.02, -1), Vector3(4, 0.04, 52), Paleta.CHODNIK, false, false,
 		Styl.teren_szum(Paleta.CHODNIK, 1.1, 0.07))
 	# Chodnik poprzeczny (wschód-zachód)
@@ -312,7 +312,7 @@ func _teren() -> void:
 		Styl.teren_szum(Paleta.ASFALT, 0.9, 0.1))
 
 func _biedronka() -> void:
-	# Budynek sklepu — z cokołem i gzymsem, jak bloki (patrz _blok)
+	# Budynek sklepu - z cokołem i gzymsem, jak bloki (patrz _blok)
 	_pudlo(Vector3(0, 3.5, -34), Vector3(22, 7, 12), Paleta.BIEDRONKA_SCIANA)
 	_pudlo(Vector3(0, 0.55, -34), Vector3(22.3, 1.1, 12.3),
 		Paleta.BIEDRONKA_SCIANA.darkened(0.45), false)
@@ -325,7 +325,7 @@ func _biedronka() -> void:
 	napis.position = Vector3(0.6, 5.8, -27.55)
 	add_child(napis)
 	_neon_napis = napis   # będzie migać jak zepsuty neon
-	# Biedronka (owad) na szyldzie — czerwona kulka w kropki
+	# Biedronka (owad) na szyldzie - czerwona kulka w kropki
 	var zuk := MeshInstance3D.new()
 	var kula := SphereMesh.new()
 	kula.radius = 0.45
@@ -350,7 +350,7 @@ func _biedronka() -> void:
 	var automat := Butelkomat.new()
 	automat.position = Vector3(6.5, 0, -27.4)
 	add_child(automat)
-	# Automat z napojami obok butelkomatu — kaucja wychodzi i od razu wraca
+	# Automat z napojami obok butelkomatu - kaucja wychodzi i od razu wraca
 	var automat_napojow := Automat.new()
 	automat_napojow.position = Vector3(4.6, 0, -27.4)
 	add_child(automat_napojow)
@@ -359,17 +359,17 @@ func _biedronka() -> void:
 	wozek.position = Vector3(9.5, 0, -25.0)
 	wozek.rotation.y = 0.4
 	add_child(wozek)
-	# Drzwi wejściowe — teleport do wnętrza sklepu
+	# Drzwi wejściowe - teleport do wnętrza sklepu
 	var wejscie := Drzwi.new()
 	wejscie.position = Vector3(-2, 0, -27.6)
 	wejscie.cel = WEJSCIE_SKLEPU
 	wejscie.obrot_y = 0.0
-	wejscie.etykieta = "E — wejdź do Biedronki"
+	wejscie.etykieta = "E - wejdź do Biedronki"
 	wejscie.komunikat = "Dzyń dzyń! Zapach świeżego pieczywa i promocji."
 	add_child(wejscie)
 	_wnetrze_biedronki()
 
-## Wnętrze sklepu — podziemne pomieszczenie (teleport przez drzwi).
+## Wnętrze sklepu - podziemne pomieszczenie (teleport przez drzwi).
 ## Wszystkie pozycje to WNETRZE + przesunięcie, więc łatwo je przenieść.
 func _wnetrze_biedronki() -> void:
 	# Podłoga, ściany i sufit
@@ -387,7 +387,7 @@ func _wnetrze_biedronki() -> void:
 	swiatlo.light_energy = 1.2
 	swiatlo.omni_range = 14.0
 	add_child(swiatlo)
-	# Regały z "towarem" (kolorowe pudełka — promocje same się nie ułożą)
+	# Regały z "towarem" (kolorowe pudełka - promocje same się nie ułożą)
 	for przesuniecie_regalu in [Vector3(-3.5, 0, 1.5), Vector3(-3.5, 0, -2), Vector3(3, 0, -2)]:
 		var pozycja_regalu: Vector3 = WNETRZE + przesuniecie_regalu
 		_pudlo(pozycja_regalu + Vector3(0, 0.9, 0), Vector3(3.2, 1.8, 0.7), Color(0.6, 0.45, 0.3))
@@ -413,12 +413,12 @@ func _wnetrze_biedronki() -> void:
 	kasjerka.position = WNETRZE + Vector3(3, 0, 2.7)
 	kasjerka.rotation.y = PI   # twarzą do wejścia
 	add_child(kasjerka)
-	# Drzwi wyjściowe — teleport z powrotem na osiedle
+	# Drzwi wyjściowe - teleport z powrotem na osiedle
 	var wyjscie := Drzwi.new()
 	wyjscie.position = WNETRZE + Vector3(-3, 0, 4.4)
 	wyjscie.cel = WYJSCIE_SKLEPU
 	wyjscie.obrot_y = PI
-	wyjscie.etykieta = "E — wyjdź na osiedle"
+	wyjscie.etykieta = "E - wyjdź na osiedle"
 	add_child(wyjscie)
 	# WIDOCZNE drzwi: framuga, dwa ciemne skrzydła i klamka na ścianie
 	_pudlo(WNETRZE + Vector3(-3, 1.6, 4.94), Vector3(2.8, 3.2, 0.1), Color(0.4, 0.34, 0.28), false)
@@ -434,7 +434,7 @@ func _bloki() -> void:
 	# Dwa bloki z wielkiej płyty po bokach osiedla
 	_blok(Vector3(-20, 0, 4), true)   # okna od strony +X (do środka)
 	_blok(Vector3(20, 0, 4), false)   # okna od strony -X
-	# Mniejszy blok na południu — kamienica, więc bez balkonów, ale okna
+	# Mniejszy blok na południu - kamienica, więc bez balkonów, ale okna
 	# i cokół obowiązkowe: bez nich to była największa gładka ściana na mapie
 	var maly := Styl.wariant(Paleta.BLOK.lerp(Paleta.PASTELE.pick_random(), 0.45), 0.05)
 	_pudlo(Vector3(-16, 4, 24), Vector3(10, 8, 8), maly)
@@ -455,7 +455,7 @@ func _bloki() -> void:
 				okno.position = Vector3(-10.95, 2.2 + pietro * 2.2, 24 + wzdluz) if wschodnia \
 					else Vector3(-16 + wzdluz, 2.2 + pietro * 2.2, 19.95)
 				add_child(okno)
-	# TRANSPARENT na lewym bloku — motto osiedla, widoczne z daleka
+	# TRANSPARENT na lewym bloku - motto osiedla, widoczne z daleka
 	_pudlo(Vector3(-15.8, 6, 4), Vector3(0.15, 1.5, 15), Color(0.96, 0.96, 0.93), false)
 	var motto := Styl.szyld("NIECH ŻYJE KAUCJA I BEZROBOCIE", 88, Color(0.78, 0.08, 0.08))
 	motto.pixel_size = 0.0075
@@ -466,24 +466,24 @@ func _bloki() -> void:
 
 func _blok(pozycja: Vector3, okna_na_wschod: bool) -> void:
 	var rozmiar := Vector3(8, 12, 20)
-	# Każdy blok dostaje własny kolor elewacji — szare pudła wyglądały
+	# Każdy blok dostaje własny kolor elewacji - szare pudła wyglądały
 	# jak makieta architektoniczna, a nie jak polskie osiedle
 	var pastel: Color = Styl.wariant(Paleta.PASTELE.pick_random(), 0.05)
 	var elewacja := Paleta.BLOK.lerp(pastel, 0.55)
 	_pudlo(pozycja + Vector3(0, rozmiar.y / 2, 0), rozmiar, elewacja)
-	# Mocniejsze pasy tego samego koloru — ślad po "termomodernizacji"
+	# Mocniejsze pasy tego samego koloru - ślad po "termomodernizacji"
 	for wysokosc in [4.0, 8.0]:
 		_pudlo(pozycja + Vector3(0, wysokosc, 0), Vector3(rozmiar.x + 0.12, 0.8, rozmiar.z + 0.12), pastel, false)
-	# COKÓŁ — ciemniejszy pas przy ziemi. Drobiazg, a robi ogromną różnicę:
+	# COKÓŁ - ciemniejszy pas przy ziemi. Drobiazg, a robi ogromną różnicę:
 	# bryła przestaje "stać na trawie jak wycięta" i zaczyna wyglądać, jakby
 	# wyrastała z gruntu. Do tego maskuje styk ściany z terenem.
 	_pudlo(pozycja + Vector3(0, 0.7, 0),
 		Vector3(rozmiar.x + 0.3, 1.4, rozmiar.z + 0.3), elewacja.darkened(0.42), false)
-	# GZYMS — attyka wystająca ponad elewację. Bez niej blok kończy się
+	# GZYMS - attyka wystająca ponad elewację. Bez niej blok kończy się
 	# ostrą krawędzią i wygląda jak ucięty w połowie.
 	_pudlo(pozycja + Vector3(0, rozmiar.y + 0.15, 0),
 		Vector3(rozmiar.x + 0.55, 0.5, rozmiar.z + 0.55), elewacja.darkened(0.22), false)
-	# Antena na dachu z kulką (bez kolizji — i tak nie do dosięgnięcia)
+	# Antena na dachu z kulką (bez kolizji - i tak nie do dosięgnięcia)
 	_walec(pozycja + Vector3(1.5, rozmiar.y + 0.9, 3), 0.04, 1.8, Color(0.2, 0.2, 0.2), false, false)
 	var kulka := MeshInstance3D.new()
 	var kula := SphereMesh.new()
@@ -496,7 +496,7 @@ func _blok(pozycja: Vector3, okna_na_wschod: bool) -> void:
 	# Siatka okien na ścianie od strony osiedla; część losowo "świeci"
 	var kierunek_x := 1.0 if okna_na_wschod else -1.0
 	var sciana_x := pozycja.x + kierunek_x * (rozmiar.x / 2 + 0.05)
-	# Kolor wypełnienia balustrad — jeden na cały blok, jak w prawdziwym
+	# Kolor wypełnienia balustrad - jeden na cały blok, jak w prawdziwym
 	# bloku, gdzie spółdzielnia kupiła jedną partię blachy
 	var kolor_balustrad: Color = Paleta.PASTELE.pick_random()
 	for pietro in 4:
@@ -516,7 +516,7 @@ func _blok(pozycja: Vector3, okna_na_wschod: bool) -> void:
 				_balkon(sciana_x, kierunek_x, wysokosc_pietra, okno.position.z, kolor_balustrad)
 
 ## Balkon: płyta wysunięta ze ściany plus balustrada. To on nadaje blokowi
-## sylwetkę — bez balkonów każdy blok jest po prostu prostopadłościanem
+## sylwetkę - bez balkonów każdy blok jest po prostu prostopadłościanem
 ## i żadna paleta tego nie ukryje.
 func _balkon(sciana_x: float, kierunek_x: float, wysokosc: float, z: float, kolor: Color) -> void:
 	var wysiegnik := 1.1        # jak daleko balkon wychodzi ze ściany
@@ -524,7 +524,7 @@ func _balkon(sciana_x: float, kierunek_x: float, wysokosc: float, z: float, kolo
 	var srodek_x := sciana_x + kierunek_x * (wysiegnik / 2.0)
 	var czolo_x := sciana_x + kierunek_x * wysiegnik
 	var poziom := wysokosc - 0.78   # płyta tuż pod parapetem okna
-	# Płyta balkonowa — surowy beton
+	# Płyta balkonowa - surowy beton
 	_pudlo(Vector3(srodek_x, poziom, z), Vector3(wysiegnik, 0.14, szerokosc),
 		Color(0.62, 0.6, 0.56), false)
 	# Balustrada czołowa (kolorowa blacha) i dwie ścianki boczne
@@ -538,11 +538,11 @@ func _mala_architektura() -> void:
 	_lawka(Vector3(3.2, 0, 12), PI)
 	_lawka(Vector3(-3.2, 0, 0), 0.0)
 	_lawka(Vector3(3.2, 0, -12), PI)
-	# Trzepak — klasyk osiedla, a od teraz też SIŁOWNIA (E = podciąganie)
+	# Trzepak - klasyk osiedla, a od teraz też SIŁOWNIA (E = podciąganie)
 	var trzepak := Trzepak.new()
 	trzepak.position = Vector3(-10, 0, 14)
 	add_child(trzepak)
-	# Latarnie wzdłuż chodnika — słup jest metalowy i ma kolizję
+	# Latarnie wzdłuż chodnika - słup jest metalowy i ma kolizję
 	for z in [16, 2, -12]:
 		_walec(Vector3(2.6, 2.0, z), 0.09, 4.0, Color(0.34, 0.34, 0.37), false, true, true)
 		var klosz := MeshInstance3D.new()
@@ -554,15 +554,15 @@ func _mala_architektura() -> void:
 		klosz.position = Vector3(2.6, 4.1, z)
 		add_child(klosz)
 
-## GARAŻE — rząd blaszaków na wschód od osiedla. Asfaltowy placyk,
+## GARAŻE - rząd blaszaków na wschód od osiedla. Asfaltowy placyk,
 ## rampy do skakania i skuter czekający na właściciela (albo i nie).
 func _garaze() -> void:
-	# Placyk z popękanego betonu — jaśniejszy od jezdni, żeby garaże czytelnie
+	# Placyk z popękanego betonu - jaśniejszy od jezdni, żeby garaże czytelnie
 	# odcinały się od obwodnicy. Wysokości celowo różne (0.020 / 0.018 / 0.012
 	# na obwodnicy), inaczej nachodzące płyty migotałyby z-fightingiem.
-	# (ciemniej niż intuicja podpowiada — przy ambiencie 0.85 z jasnego nieba
+	# (ciemniej niż intuicja podpowiada - przy ambiencie 0.85 z jasnego nieba
 	# każdy szary powyżej 0.4 wychodzi na ekranie prawie biały)
-	# Placyk zaczyna się dopiero za obwodnicą (jezdnia zajmuje x 27..33) —
+	# Placyk zaczyna się dopiero za obwodnicą (jezdnia zajmuje x 27..33) -
 	# wcześniej beton wchodził pod asfalt i plac zlewał się z ulicą.
 	var beton := Styl.teren_szum(Color(0.3, 0.29, 0.28), 0.85, 0.11)
 	_pudlo(Vector3(43, 0.020, 0), Vector3(18, 0.03, 34), Color(0.3, 0.29, 0.28), false, false, beton)
@@ -575,20 +575,20 @@ func _garaze() -> void:
 	]
 	for i in 5:
 		var z := -14.0 + i * 7.0
-		# Każdy blaszak w swoim odcieniu i z lekko innym przechyłem dachu —
+		# Każdy blaszak w swoim odcieniu i z lekko innym przechyłem dachu -
 		# pięć identycznych kopii obok siebie od razu zdradza generator
 		_pudlo(Vector3(48, 1.4, z), Vector3(6, 2.8, 5.6), Styl.wariant(Color(0.52, 0.5, 0.46)))
 		var dach := _pudlo(Vector3(48, 2.92, z), Vector3(6.4, 0.14, 6.0),
 			Styl.wariant(Color(0.42, 0.26, 0.16), 0.09), false)
 		dach.rotation.z = randf_range(0.05, 0.09)
-		# Brama garażowa z uchwytem — blacha, więc z połyskiem (patrz Styl.metal)
+		# Brama garażowa z uchwytem - blacha, więc z połyskiem (patrz Styl.metal)
 		_pudlo(Vector3(44.95, 1.15, z), Vector3(0.12, 2.3, 4.4), kolory_bram[i], false, false,
 			Styl.metal(kolory_bram[i], 0.0))
 		_pudlo(Vector3(44.85, 1.0, z), Vector3(0.1, 0.12, 0.5), Color(0.2, 0.2, 0.22), false)
-	# Rampy — trzy różne kalibry, od "podskok" do "orbita".
+	# Rampy - trzy różne kalibry, od "podskok" do "orbita".
 	# Stromiej niż 25° robi się ściana, płasko poniżej 15° nie wybija.
 	# WSZYSTKIE stoją na placu, nie na jezdni: rampa postawiona na obwodnicy
-	# (a taka tu wcześniej stała, na x=30) nie miała sensu — auta krążące
+	# (a taka tu wcześniej stała, na x=30) nie miała sensu - auta krążące
 	# po ścieżce przejeżdżały przez nią na wylot, bo jadą po torze, nie po
 	# fizyce. Plac garażowy to jedyne miejsce, gdzie taka konstrukcja się klei.
 	_rampa(Vector3(38, 0, -8), 0.0, 2.8, 0.9)
@@ -599,7 +599,7 @@ func _garaze() -> void:
 	skuter.position = Vector3(41, 0, -16)
 	skuter.rotation.y = -PI / 2.0
 	add_child(skuter)
-	# Sterta opon — obowiązkowy element każdego placu garażowego
+	# Sterta opon - obowiązkowy element każdego placu garażowego
 	for i in 5:
 		var opona := MeshInstance3D.new()
 		var torus := TorusMesh.new()
@@ -612,9 +612,9 @@ func _garaze() -> void:
 		opona.rotation.z = randf() * TAU   # inaczej stos wygląda jak jedna bryła
 		opona.position = Vector3(36.5 + randf_range(-0.2, 0.2), 0.12 + i * 0.2, 15 + randf_range(-0.2, 0.2))
 		add_child(opona)
-	# Jedna kolizja na cały stos — pięć torusów nie ma sensu opisywać osobno
+	# Jedna kolizja na cały stos - pięć torusów nie ma sensu opisywać osobno
 	_przeszkoda(Vector3(36.5, 0.5, 15), Vector3(0.95, 1.0, 0.95))
-	# Złom leżący pod garażami — naturalne łowisko
+	# Złom leżący pod garażami - naturalne łowisko
 	for i in 6:
 		var zlom := Kolekcjonerski.new()
 		zlom.typ = Kolekcjonerski.losowy_typ_zlomu()
@@ -630,18 +630,18 @@ func _rampa(pozycja: Vector3, obrot: float, dlugosc: float, wysokosc: float) -> 
 	rampa.rotation.y = obrot
 	add_child(rampa)
 
-## OGRÓDKI DZIAŁKOWE — za obwodnicą na południu. Altanki, grządki,
+## OGRÓDKI DZIAŁKOWE - za obwodnicą na południu. Altanki, grządki,
 ## drzewka owocowe, a na końcu SKUP ZŁOMU u Zdziśka.
 func _dzialki() -> void:
-	# Alejka dojazdowa — ubita ziemia z żużlem
+	# Alejka dojazdowa - ubita ziemia z żużlem
 	_pudlo(Vector3(0, 0.015, 46), Vector3(3, 0.03, 24), Color(0.6, 0.55, 0.45), false, false,
 		Styl.teren_szum(Color(0.6, 0.55, 0.45), 1.0, 0.12))
-	# Działki po dwie z każdej strony alejki — pozycje z DZIALKI_X, żeby
+	# Działki po dwie z każdej strony alejki - pozycje z DZIALKI_X, żeby
 	# obrys znany reszcie gry zgadzał się z tym, co faktycznie stoi na mapie
 	for x in DZIALKI_X:
 		_dzialka(Vector3(x, 0, DZIALKA_Z))
 	# Sztachety i warzywa ze WSZYSTKICH działek jako dwa MultiMeshe.
-	# Same płotki to ~260 elementów — jako osobne węzły zabiłyby wydajność.
+	# Same płotki to ~260 elementów - jako osobne węzły zabiłyby wydajność.
 	var sztacheta := BoxMesh.new()
 	sztacheta.size = Vector3(0.1, 1.0, 0.1)
 	_multi(sztacheta, _sztachety, _kolory_sztachet, 78.0)
@@ -651,13 +651,13 @@ func _dzialki() -> void:
 	warzywo.radial_segments = 6      # drobiazg z bliska, nie trzeba kuli idealnej
 	warzywo.rings = 3
 	_multi(warzywo, _warzywa, _kolory_warzyw, 46.0)
-	# Skup złomu na końcu alejki — okienkiem i wagą do gracza, który
+	# Skup złomu na końcu alejki - okienkiem i wagą do gracza, który
 	# nadchodzi od strony osiedla (czyli od mniejszych Z)
 	var skup := SkupZlomu.new()
 	skup.position = Vector3(0, 0, 54)
 	skup.rotation.y = PI
 	add_child(skup)
-	# Kontenery przy działkach — grzebanie w nich to podstawa biznesu.
+	# Kontenery przy działkach - grzebanie w nich to podstawa biznesu.
 	# Stoją PRZED jezdnią (z=35..41), nie na niej; wcześniej były na asfalcie.
 	for pozycja in [Vector3(-8, 0, 32), Vector3(8, 0, 32)]:
 		var kontener := Smietnik.new()
@@ -667,12 +667,12 @@ func _dzialki() -> void:
 		add_child(kontener)
 
 ## Pojedyncza działka: płotek, altanka, grządki i drzewko.
-## Sztachety i warzywa NIE są osobnymi węzłami — trafiają do wspólnych
+## Sztachety i warzywa NIE są osobnymi węzłami - trafiają do wspólnych
 ## tablic, z których _dzialki() składa dwa MultiMeshe (patrz niżej).
 func _dzialka(srodek: Vector3) -> void:
 	var szerokosc := DZIALKA_SZEROKOSC
 	var glebokosc := DZIALKA_GLEBOKOSC
-	# Płotek ze sztachet dookoła (co 1 m, każda lekko krzywa — bo osiedle).
+	# Płotek ze sztachet dookoła (co 1 m, każda lekko krzywa - bo osiedle).
 	# Od strony alejki zostaje przerwa na FURTKĘ: ogrodzona działka bez wejścia
 	# to zagadka, a nie ogródek.
 	var kolor_plotu := Color(0.55, 0.42, 0.28).lerp(Color(0.4, 0.5, 0.35), randf())
@@ -694,7 +694,7 @@ func _dzialka(srodek: Vector3) -> void:
 			_sztachety.append(Transform3D(obrot, pozycja))
 			_kolory_sztachet.append(Styl.wariant(kolor_plotu, 0.05))
 		# Kolizja płotka. Sztachety są rysowane jako MultiMesh (jeden węzeł na
-		# wszystkie działki), a MultiMesh nie ma żadnej fizyki — bez tego
+		# wszystkie działki), a MultiMesh nie ma żadnej fizyki - bez tego
 		# ogrodzenie było czystą dekoracją i wchodziło się przez nie na wylot.
 		_kolizja_plotka(srodek, szerokosc, glebokosc, wzdluz_x, znak,
 			POLOWA_FURTKI if bok == bok_furtki else 0.0)
@@ -706,7 +706,7 @@ func _dzialka(srodek: Vector3) -> void:
 			_walec(alt + Vector3(x, 1.1, z), 0.08, 2.0, Paleta.DREWNO_CIEMNE)
 	var dach_altany := _pudlo(alt + Vector3(0, 2.25, 0), Vector3(4.0, 0.16, 3.6), Color(0.5, 0.26, 0.2), false)
 	dach_altany.rotation.x = 0.1
-	# Grządki — rzędy ciemnej ziemi z "warzywami" (warzywa idą do MultiMesha)
+	# Grządki - rzędy ciemnej ziemi z "warzywami" (warzywa idą do MultiMesha)
 	for rzad in 3:
 		var z := srodek.z + 1.5 + rzad * 1.6
 		_pudlo(Vector3(srodek.x, 0.06, z), Vector3(7.0, 0.12, 0.9), Color(0.32, 0.22, 0.14), false)
@@ -720,7 +720,7 @@ func _dzialka(srodek: Vector3) -> void:
 
 ## Losuje punkt w zadanej strefie [x_min, x_max, z_min, z_max], omijając
 ## jezdnie i budynki. Ręcznie dobierane strefy zawsze w końcu zahaczą o coś,
-## co ktoś później przesunie — tu odrzucamy trafienia i losujemy ponownie.
+## co ktoś później przesunie - tu odrzucamy trafienia i losujemy ponownie.
 ## Po wyczerpaniu prób oddajemy ostatni punkt: lepiej jedna butelka w złym
 ## miejscu niż zawieszona gra.
 func _losuj_wolne(strefa: Array, proby := 24) -> Vector3:
@@ -784,16 +784,16 @@ func _multi(mesh: Mesh, transformy: Array, kolory: Array, znikaj_od := 0.0) -> M
 	add_child(wezel)
 	return wezel
 
-## Tablica ogłoszeń przy głównym chodniku — tu bierze się zlecenia.
+## Tablica ogłoszeń przy głównym chodniku - tu bierze się zlecenia.
 func _tablica_ogloszen() -> void:
 	var tablica := Tablica.new()
 	tablica.position = Vector3(4.6, 0, 14)
 	tablica.rotation.y = -PI / 2.0 - 0.25
 	add_child(tablica)
 
-## RUCH ULICZNY — obwodnica osiedla jako Path3D + auta (PathFollow3D).
+## RUCH ULICZNY - obwodnica osiedla jako Path3D + auta (PathFollow3D).
 func _ruch_uliczny() -> void:
-	# Jezdnia budowana wprost z JEZDNIE — asfalt nie może się rozjechać
+	# Jezdnia budowana wprost z JEZDNIE - asfalt nie może się rozjechać
 	# z tym, co uważa za jezdnię reszta gry (patrz czy_zajete).
 	var nawierzchnia := Styl.teren_szum(Paleta.ASFALT, 0.9, 0.1)
 	for pas in JEZDNIE:
@@ -809,7 +809,7 @@ func _ruch_uliczny() -> void:
 		_pudlo(Vector3(-30, 0.026, -46.0 + t * 84.0), Vector3(0.16, 0.02, 1.2), Paleta.LINIA, false)
 		_pudlo(Vector3(30, 0.026, -46.0 + t * 84.0), Vector3(0.16, 0.02, 1.2), Paleta.LINIA, false)
 
-	# Ścieżka aut — zamknięta pętla po obwodnicy, z zaokrąglonymi rogami
+	# Ścieżka aut - zamknięta pętla po obwodnicy, z zaokrąglonymi rogami
 	var sciezka := Path3D.new()
 	var krzywa := Curve3D.new()
 	var punkty := [
@@ -834,7 +834,7 @@ func _ruch_uliczny() -> void:
 		sciezka.add_child(samochod)
 		samochod.progress = dlugosc_trasy * (float(i) / float(Balans.ILE_AUT))
 
-## Złom rozrzucony po mapie — przy garażach, działkach i za blokami.
+## Złom rozrzucony po mapie - przy garażach, działkach i za blokami.
 func _rozrzuc_zlom() -> void:
 	# Strefy celują w wolną przestrzeń: pas jezdni (±27..±33 i z 35..41) oraz
 	# obrysy bloków są wyłączone. _losuj_wolne i tak odrzuci trafienie w coś
@@ -853,14 +853,14 @@ func _rozrzuc_zlom() -> void:
 		add_child(zlom)
 
 func _lawka(pozycja: Vector3, obrot: float) -> void:
-	# Ławka to interaktywny obiekt (siadanie) — patrz scripts/lawka.gd
+	# Ławka to interaktywny obiekt (siadanie) - patrz scripts/lawka.gd
 	var lawka := Lawka.new()
 	lawka.position = pozycja
 	lawka.rotation.y = obrot
 	add_child(lawka)
 
 func _smietniki() -> void:
-	# Duże kontenery przy blokach — 13 m od osi, czyli poza zasięgiem balkonów
+	# Duże kontenery przy blokach - 13 m od osi, czyli poza zasięgiem balkonów
 	for pozycja in [Vector3(-13, 0, 10), Vector3(-13, 0, -4), Vector3(13, 0, 12), Vector3(13, 0, -2)]:
 		var kontener := Smietnik.new()
 		kontener.rodzaj = Smietnik.Rodzaj.KONTENER
@@ -884,7 +884,7 @@ func _npce() -> void:
 	pies.position = Vector3(14.5, 0, 6)
 	pies.rotation.y = -PI / 2   # buda przodem do osiedla
 	add_child(pies)
-	# Konkurent Heniek — startuje po drugiej stronie mapy
+	# Konkurent Heniek - startuje po drugiej stronie mapy
 	var heniek := Konkurent.new()
 	heniek.position = Vector3(18, 0.2, 18)
 	add_child(heniek)
@@ -894,7 +894,7 @@ func _npce() -> void:
 	add_child(przechodzien)
 	# Stadko gołębi na chodniku (uciekają przed graczem)
 	add_child(Golebie.new())
-	# Patrol Straży Miejskiej — grzebanie przy nim kosztuje
+	# Patrol Straży Miejskiej - grzebanie przy nim kosztuje
 	var straznik := Straznik.new()
 	straznik.position = Vector3(8, 0, 18)
 	add_child(straznik)
@@ -903,7 +903,7 @@ func _npce() -> void:
 	kiosk.position = Vector3(7, 0, 9.5)
 	kiosk.rotation.y = PI / 2   # okienkiem do chodnika
 	add_child(kiosk)
-	# Okno z DISCO POLO (prawy blok) — muzyka przestrzenna + strefa morale
+	# Okno z DISCO POLO (prawy blok) - muzyka przestrzenna + strefa morale
 	var glosnik := AudioStreamPlayer3D.new()
 	glosnik.stream = Sfx.petla_disco()
 	glosnik.position = Vector3(15.8, 5.5, 10)
@@ -935,10 +935,10 @@ func _wejscie_w_disco(cialo: Node3D) -> void:
 	Game.dodaj_wsiokometr(5.0)
 	Game.pokaz_komunikat("Z okna leci disco polo. Morale rośnie! Wsiokometr +5.")
 
-## Zieleń: drzewa, krzaki i łaty trawy — osiedle przestaje być gołe.
+## Zieleń: drzewa, krzaki i łaty trawy - osiedle przestaje być gołe.
 func _zielen() -> void:
 	# Drzewa rozstawione po obrzeżach i między blokami.
-	# Uwaga: wszystkie muszą omijać pas jezdni (x od ±27 do ±33) — wcześniej
+	# Uwaga: wszystkie muszą omijać pas jezdni (x od ±27 do ±33) - wcześniej
 	# pięć z nich rosło dokładnie na obwodnicy, a jedno w środku małego bloku.
 	for pozycja in [
 		Vector3(-25, 0, 16), Vector3(-36, 0, 4), Vector3(-36, 0, -8), Vector3(-25, 0, -18),
@@ -955,7 +955,7 @@ func _zielen() -> void:
 		Vector3(-9.5, 0, 18), Vector3(11, 0, 22),
 	]:
 		_krzak(pozycja)
-	# Łaty ciemniejszej trawy — łamią jednolitą zieleń trawnika
+	# Łaty ciemniejszej trawy - łamią jednolitą zieleń trawnika
 	for i in 16:
 		var laty := MeshInstance3D.new()
 		var pudlo := BoxMesh.new()
@@ -969,7 +969,7 @@ func _zielen() -> void:
 
 func _drzewo(pozycja: Vector3) -> void:
 	var skala := randf_range(0.85, 1.3)
-	# Pień — kolizję dokładamy niżej osobno (szerszą niż sam pień, żeby
+	# Pień - kolizję dokładamy niżej osobno (szerszą niż sam pień, żeby
 	# gracz nie wchodził twarzą w koronę), więc walec zostaje wizualny
 	_walec(pozycja + Vector3(0, 1.1 * skala, 0), 0.18 * skala, 2.2 * skala, Paleta.PIEN, false, false)
 	var cialo := StaticBody3D.new()
@@ -982,7 +982,7 @@ func _drzewo(pozycja: Vector3) -> void:
 	kolizja.shape = walec
 	cialo.add_child(kolizja)
 	add_child(cialo)
-	# Korona — trzy zielone kule w różnych odcieniach
+	# Korona - trzy zielone kule w różnych odcieniach
 	for dane in [
 		[Vector3(0, 2.7, 0), 0.95, Paleta.KORONY[0]],
 		[Vector3(0.5, 2.3, 0.3), 0.7, Paleta.KORONY[1]],
@@ -993,14 +993,14 @@ func _drzewo(pozycja: Vector3) -> void:
 		kula.radius = dane[1] * skala
 		kula.height = dane[1] * 2.0 * skala
 		kula_mesh.mesh = kula
-		# Odcień per kula, nie per gatunek — inaczej wszystkie drzewa na mapie
+		# Odcień per kula, nie per gatunek - inaczej wszystkie drzewa na mapie
 		# mają dokładnie te same trzy zielenie i widać, że to jeden prefab
 		kula_mesh.material_override = _material(Styl.wariant(dane[2], 0.08), false, Styl.KONTUR_OBIEKT)
 		kula_mesh.position = pozycja + dane[0] * skala
 		kula_mesh.rotation.y = randf() * TAU
 		add_child(kula_mesh)
 	# Korona zatrzymuje WYŁĄCZNIE wysięgnik kamery (patrz Balans.WARSTWA_KAMERY).
-	# Gracz przez liście nadal przechodzi — blokuje go tylko pień — ale kamera
+	# Gracz przez liście nadal przechodzi - blokuje go tylko pień - ale kamera
 	# TPP nie wjeżdża już w środek korony, gdzie widać sam czarny kontur.
 	var korona := StaticBody3D.new()
 	korona.collision_layer = Balans.WARSTWA_KAMERY
@@ -1019,17 +1019,17 @@ func _krzak(pozycja: Vector3) -> void:
 	kula.radius = randf_range(0.5, 0.8)
 	kula.height = kula.radius * 1.3
 	krzak.mesh = kula
-	# Każdy krzak w swoim odcieniu — rząd identycznych zielonych kul
+	# Każdy krzak w swoim odcieniu - rząd identycznych zielonych kul
 	# natychmiast zdradza, że to kopie jednego obiektu
 	krzak.material_override = _material(Styl.wariant(Paleta.KRZAK, 0.09), false, Styl.KONTUR_OBIEKT)
 	krzak.position = pozycja + Vector3(0, kula.height * 0.35, 0)
 	krzak.rotation.y = randf() * TAU
 	add_child(krzak)
-	# Krzak jest przeszkodą — niższą niż wygląda, żeby dało się go przeskoczyć
+	# Krzak jest przeszkodą - niższą niż wygląda, żeby dało się go przeskoczyć
 	_przeszkoda(pozycja + Vector3(0, kula.radius * 0.5, 0),
 		Vector3(kula.radius * 1.6, kula.radius, kula.radius * 1.6)).add_to_group("krzak")
 
-## Niski płot wokół osiedla — granica mapy wygląda celowo, nie "ucięte".
+## Niski płot wokół osiedla - granica mapy wygląda celowo, nie "ucięte".
 func _plot() -> void:
 	var kolor := Paleta.PLOT
 	for strona in 4:
@@ -1045,12 +1045,12 @@ func _plot() -> void:
 			poprzeczka.position = Vector3(0, wysokosc, znak * 59) if wzdluz_x else Vector3(znak * 59, wysokosc, 0)
 			add_child(poprzeczka)
 		# Słupki co ~5,5 m (kolizję niesie ciągła bariera niżej, więc same
-		# słupki zostają wizualne — inaczej gracz zaczepiałby o co drugi)
+		# słupki zostają wizualne - inaczej gracz zaczepiałby o co drugi)
 		for i in 22:
 			var wzdluz := -58.0 + i * 5.5
 			var pozycja := Vector3(wzdluz, 0.55, znak * 59) if wzdluz_x else Vector3(znak * 59, 0.55, wzdluz)
 			_walec(pozycja, 0.07, 1.1, kolor, false, false)
-		# Ciągła bariera wzdłuż całego boku — płot ma ZATRZYMYWAĆ, a nie być
+		# Ciągła bariera wzdłuż całego boku - płot ma ZATRZYMYWAĆ, a nie być
 		# dekoracją, przez którą przechodzi się na niewidzialną ścianę metr dalej
 		_przeszkoda(
 			Vector3(0, 0.6, znak * 59) if wzdluz_x else Vector3(znak * 59, 0.6, 0),
@@ -1079,7 +1079,7 @@ func _chmury() -> void:
 		tw.tween_property(chmura, "position:x", chmura.position.x + 18.0, randf_range(35.0, 55.0))
 		tw.tween_property(chmura, "position:x", chmura.position.x, randf_range(35.0, 55.0))
 
-## Linie parkingowe i pasy — asfalt przestaje być gołą płytą.
+## Linie parkingowe i pasy - asfalt przestaje być gołą płytą.
 func _detale_drogi() -> void:
 	# Miejsca parkingowe przed Biedronką
 	for i in 6:
@@ -1100,7 +1100,7 @@ func _detale_drogi() -> void:
 		pas.position = Vector3(-2.4 + i * 1.2, 0.05, -20.5)
 		add_child(pas)
 
-## Kamienie na trawnikach — sprint po nich kończy się glebą.
+## Kamienie na trawnikach - sprint po nich kończy się glebą.
 func _kamienie() -> void:
 	for i in ILE_KAMIENI:
 		# Nie kładziemy kamieni na chodniku ani przy spawnie gracza
@@ -1128,14 +1128,14 @@ func _kamienie() -> void:
 		strefa.position = pozycja + Vector3(0, 0.2, 0)
 		add_child(strefa)
 
-## Neon Biedronki miga w losowych odstępach — czasem seria "zwarć".
+## Neon Biedronki miga w losowych odstępach - czasem seria "zwarć".
 func _neon_petla() -> void:
 	while is_inside_tree():
 		await get_tree().create_timer(randf_range(2.0, 6.0), false).timeout
 		if not is_instance_valid(_neon_napis):
 			return
 		if randf() < 0.35:
-			# Seria szybkich mrugnięć — klasyczne zwarcie
+			# Seria szybkich mrugnięć - klasyczne zwarcie
 			for i in randi_range(2, 5):
 				_neon_napis.visible = false
 				await get_tree().create_timer(randf_range(0.04, 0.12), false).timeout
@@ -1148,7 +1148,7 @@ func _neon_petla() -> void:
 			_neon_napis.visible = true
 
 func _rozrzuc_butelki() -> void:
-	# Strefy rozrzutu: (x_min, x_max, z_min, z_max) — środek osiedla i okolice
+	# Strefy rozrzutu: (x_min, x_max, z_min, z_max) - środek osiedla i okolice
 	var strefy := [
 		[-13.0, 13.0, -20.0, 20.0],   # centralna część osiedla
 		[-13.0, 13.0, -26.0, -20.0],  # przed Biedronką

@@ -1,5 +1,5 @@
 extends CanvasLayer
-## HUD — cały interfejs budowany w kodzie:
+## HUD - cały interfejs budowany w kodzie:
 ## menu główne, pauza (Esc), licznik kasy/plecaka, timer, Wsiokometr,
 ## pasek "Papieros", combo, komunikaty, podpowiedź interakcji,
 ## intro po starcie i ekran podsumowania na koniec dnia.
@@ -85,10 +85,10 @@ func _input(zdarzenie: InputEvent) -> void:
 	# Po końcu dnia R zaczyna nowy dzień (z płynnym przejściem)
 	if not Game.gra_trwa and not Game.w_menu and zdarzenie.is_action_pressed("restart"):
 		_nowy_dzien_z_przejsciem()
-	# Esc — pauza (tylko w trakcie gry)
+	# Esc - pauza (tylko w trakcie gry)
 	if zdarzenie.is_action_pressed("ui_cancel") and Game.gra_trwa and not Game.w_menu:
 		_przelacz_pauze()
-	# F11 — pełny ekran
+	# F11 - pełny ekran
 	var klawisz := zdarzenie as InputEventKey
 	if klawisz and klawisz.pressed and klawisz.keycode == KEY_F11:
 		_przelacz_pelny_ekran()
@@ -98,7 +98,7 @@ func _input(zdarzenie: InputEvent) -> void:
 
 # --- Pomocnicze ---
 
-## Label z obrysem — czytelny na każdym tle.
+## Label z obrysem - czytelny na każdym tle.
 func _etykieta(tekst: String, rozmiar: int, kolor := Color.WHITE) -> Label:
 	var l := Label.new()
 	l.text = tekst
@@ -262,7 +262,7 @@ func _zbuduj() -> void:
 	_ety_czas = _etykieta("5:00", 32)
 	wiersz_czasu.add_child(_ety_czas)
 
-	# Combo — duży napis nad środkiem ekranu
+	# Combo - duży napis nad środkiem ekranu
 	_ety_combo = _etykieta("", 40, Color(1.0, 0.9, 0.2))
 	_ety_combo.set_anchors_preset(Control.PRESET_CENTER)
 	_ety_combo.position = Vector2(-300, -160)
@@ -307,7 +307,7 @@ func _zbuduj() -> void:
 	_nawigacja.position = Vector2(-212, -228)
 	_korzen.add_child(_nawigacja)
 
-	# Kreski pędu — pod resztą UI, nad obrazem 3D
+	# Kreski pędu - pod resztą UI, nad obrazem 3D
 	_motion_lines = load("res://ui/motion_lines.gd").new()
 	_korzen.add_child(_motion_lines)
 	_korzen.move_child(_motion_lines, 1)   # zaraz nad nakładką koloru
@@ -336,7 +336,7 @@ func _zbuduj() -> void:
 	_zbuduj_pauze()
 	_zbuduj_ustawienia()
 
-	# Czarna zasłona do przejść — bezpośrednio w CanvasLayer, NAD całym UI
+	# Czarna zasłona do przejść - bezpośrednio w CanvasLayer, NAD całym UI
 	_zaslona = ColorRect.new()
 	_zaslona.color = Color.BLACK
 	_zaslona.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -344,7 +344,7 @@ func _zbuduj() -> void:
 	_zaslona.modulate.a = 0.0
 	add_child(_zaslona)
 
-## Menu główne — pokazywane przy pierwszym uruchomieniu gry.
+## Menu główne - pokazywane przy pierwszym uruchomieniu gry.
 func _zbuduj_menu() -> void:
 	_panel_menu = Control.new()
 	_panel_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -361,14 +361,14 @@ func _zbuduj_menu() -> void:
 	kolumna.add_theme_constant_override("separation", 12)
 	kolumna.alignment = BoxContainer.ALIGNMENT_CENTER
 	srodek.add_child(kolumna)
-	# Logo — wielka pikselowa butelka
+	# Logo - wielka pikselowa butelka
 	var logo := _ikona("butelka", 96)
 	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	kolumna.add_child(logo)
 	var tytul := _etykieta("SYMULATOR\nWSIOKA KAUCYJNEGO", 52, Color(1.0, 0.85, 0.2))
 	tytul.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	kolumna.add_child(tytul)
-	var tekst_podtytulu := "SYMULATOR POLAKA — edycja kaucyjna\nOsiedle. Butelki. Chwała."
+	var tekst_podtytulu := "SYMULATOR POLAKA - edycja kaucyjna\nOsiedle. Butelki. Chwała."
 	if Game.dzien > 1 or Game.bank > 0.0:
 		tekst_podtytulu += "\nDzień kariery: %d | Bank: %s" % [Game.dzien, Game.zl(Game.bank)]
 	var podtytul := _etykieta(tekst_podtytulu, 20, Color(0.8, 0.8, 0.8))
@@ -381,8 +381,8 @@ func _zbuduj_menu() -> void:
 	kolumna.add_child(_przycisk("WYJDŹ", _wyjdz))
 	kolumna.add_child(_etykieta("", 8))
 	var sterowanie := _etykieta(
-		"WASD — ruch | Mysz — kamera | E — interakcja | F — nawal komuś | Spacja — skok\n" +
-		"Shift — sprint (zużywa Papierosa) | Ctrl — przysiad | V — kamera | Esc — pauza\n" +
+		"WASD - ruch | Mysz - kamera | E - interakcja | F - nawal komuś | Spacja - skok\n" +
+		"Shift - sprint (zużywa Papierosa) | Ctrl - przysiad | V - kamera | Esc - pauza\n" +
 		"Głaszcz psa, podciągaj się na trzepaku, kup piwo w Biedronce. Żyj pełnią życia.",
 		16, Color(0.7, 0.7, 0.7)
 	)
@@ -495,17 +495,17 @@ func _wykonaj_przejscie(akcja: Callable) -> void:
 func _nowy_dzien_z_przejsciem() -> void:
 	_wykonaj_przejscie(Game.nowy_dzien)
 
-## Krótki tutorial przy pierwszej rozgrywce — kolejne podpowiedzi u dołu.
+## Krótki tutorial przy pierwszej rozgrywce - kolejne podpowiedzi u dołu.
 func _tutorial() -> void:
 	if not Game.pierwszy_dzien:
 		return
 	var podpowiedzi: Array[String] = [
-		"WASD — poruszanie się | mysz — kamera",
-		"E — podnoś butelki i przeszukuj śmietniki",
+		"WASD - poruszanie się | mysz - kamera",
+		"E - podnoś butelki i przeszukuj śmietniki",
 		"Pełny plecak zanieś do BUTELKOMATU przy Biedronce",
-		"Shift — sprint (pilnuj Papierosa) | F — argument siłowy",
+		"Shift - sprint (pilnuj Papierosa) | F - argument siłowy",
 		"ZŁOM (kable, felgi, akumulatory) sprzedasz TYLKO na SKUPIE za działkami",
-		"Skup zamyka się przed końcem dnia — nie zostań z felgą w plecaku!",
+		"Skup zamyka się przed końcem dnia - nie zostań z felgą w plecaku!",
 		"Tablica ogłoszeń przy chodniku = ZLECENIA za grubszą kasę (F zmienia kartkę)",
 		"Wózek i skuter: Ctrl w zakręcie = DRIFT, a rampy przy garażach dają bonus za lot",
 		"Radar w prawym dolnym rogu: zielone = punkty oddania, czerwone = straż",
@@ -556,7 +556,7 @@ func _pokaz_intro() -> void:
 
 # --- Reakcje na sygnały ---
 
-## Kasa nalicza się animowanie — jak wygrana na automacie.
+## Kasa nalicza się animowanie - jak wygrana na automacie.
 func _aktualizuj_kase(kwota: float) -> void:
 	var tw := create_tween()
 	tw.tween_method(_ustaw_tekst_kasy, _kasa_wyswietlana, kwota, 0.8)\
@@ -568,7 +568,7 @@ func _ustaw_tekst_kasy(kwota: float) -> void:
 
 func _aktualizuj_plecak(ile: int, maks: int) -> void:
 	_ety_plecak.text = "%d/%d" % [ile, maks]
-	# Czerwony, gdy pełny — sygnał "idź do butelkomatu"
+	# Czerwony, gdy pełny - sygnał "idź do butelkomatu"
 	_ety_plecak.add_theme_color_override(
 		"font_color", Color(1.0, 0.4, 0.4) if ile >= maks else Color.WHITE
 	)
@@ -576,7 +576,7 @@ func _aktualizuj_plecak(ile: int, maks: int) -> void:
 func _aktualizuj_czas(sekundy: float) -> void:
 	var calkowite := int(ceilf(sekundy))
 	_ety_czas.text = "%d:%02d" % [calkowite / 60, calkowite % 60]
-	# Ostatnie 30 sekund — czerwony timer
+	# Ostatnie 30 sekund - czerwony timer
 	if sekundy < 30.0:
 		_ety_czas.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 
@@ -623,7 +623,7 @@ func _aktualizuj_wyzwanie(opis: String, postep: int, cel: int, zrobione: bool) -
 
 ## Filtr ekranu: ciepły bursztyn po piwach, zgniła szarość na kacu.
 ## Panel aktywnego zlecenia. Pusty słownik = chowamy panel.
-## Pasek zmienia kolor, gdy czas ucieka — ostatnie 10 s pulsuje na czerwono.
+## Pasek zmienia kolor, gdy czas ucieka - ostatnie 10 s pulsuje na czerwono.
 func _aktualizuj_zlecenie(dane: Dictionary) -> void:
 	if dane.is_empty():
 		_panel_zlecenia.visible = false
@@ -633,7 +633,7 @@ func _aktualizuj_zlecenie(dane: Dictionary) -> void:
 	_ety_zlecenie_opis.text = "%s  [%d/%d]  %ds" % [
 		dane["opis"], dane["postep"], dane["cel"], int(dane["pozostalo"]),
 	]
-	# Procent liczymy z postępu celu — to on jest najważniejszy dla gracza
+	# Procent liczymy z postępu celu - to on jest najważniejszy dla gracza
 	var procent: float = float(dane["postep"]) / maxf(float(dane["cel"]), 1.0)
 	_pasek_zlecenia.size.x = SZEROKOSC_PASKA * clampf(procent, 0.0, 1.0)
 	var malo_czasu: bool = float(dane["pozostalo"]) <= 10.0
@@ -666,7 +666,7 @@ func _dodaj_komunikat(tekst: String) -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.custom_minimum_size = Vector2(500, 0)
 	_kanal_komunikatow.add_child(l)
-	# Maksymalnie 5 komunikatów naraz — najstarszy wylatuje
+	# Maksymalnie 5 komunikatów naraz - najstarszy wylatuje
 	if _kanal_komunikatow.get_child_count() > 5:
 		_kanal_komunikatow.get_child(0).queue_free()
 	var tw := l.create_tween()
@@ -699,7 +699,7 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 		kolumna.add_child(_etykieta("Cel dnia (%s) osiągnięty! Prawdziwy magnat kaucyjny." % [
 			Game.zl(dane.get("cel_kwota", 0.0))], 17, Paleta.UI_ZIELONY))
 	else:
-		kolumna.add_child(_etykieta("Cel dnia NIEWYKONANY — brakło %s do %s." % [
+		kolumna.add_child(_etykieta("Cel dnia NIEWYKONANY - brakło %s do %s." % [
 			Game.zl(maxf(float(dane.get("cel_kwota", 0.0)) - float(dane["kasa"]), 0.0)),
 			Game.zl(dane.get("cel_kwota", 0.0)),
 		], 17, Paleta.UI_CZERWONY))
@@ -718,18 +718,18 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 		))
 	if dane["w_plecaku"] > 0:
 		kolumna.add_child(_etykieta(
-			"W plecaku zostało: %d szt. — przepadły. Trzeba było biec szybciej!" % dane["w_plecaku"],
+			"W plecaku zostało: %d szt. - przepadły. Trzeba było biec szybciej!" % dane["w_plecaku"],
 			15, Color(1.0, 0.6, 0.5)
 		))
-	# Wyzwanie dnia — zaliczone czy nie?
+	# Wyzwanie dnia - zaliczone czy nie?
 	if dane["wyzwanie_ok"]:
 		kolumna.add_child(_etykieta("Wyzwanie dnia zaliczone: %s" % dane["wyzwanie_opis"], 15, Paleta.UI_ZLOTY))
 	else:
 		kolumna.add_child(_etykieta("Wyzwanie niezaliczone: %s. Jutro też jest dzień." % dane["wyzwanie_opis"], 15, Color(0.7, 0.7, 0.7)))
-	# ROZLICZENIE DNIA — dwa zadania naraz: kwota i wyzwanie
+	# ROZLICZENIE DNIA - dwa zadania naraz: kwota i wyzwanie
 	if float(dane.get("premia", 0.0)) > 0.0:
 		kolumna.add_child(_etykieta(
-			"CHWAŁA OSIEDLA! Cel i wyzwanie zaliczone — premia %s do banku." % Game.zl(dane["premia"]),
+			"CHWAŁA OSIEDLA! Cel i wyzwanie zaliczone - premia %s do banku." % Game.zl(dane["premia"]),
 			20, Paleta.UI_ZLOTY))
 	elif float(dane.get("kara", 0.0)) > 0.0:
 		kolumna.add_child(_etykieta(
@@ -738,20 +738,20 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 			20, Paleta.UI_CZERWONY))
 	else:
 		kolumna.add_child(_etykieta(
-			"Dzień nierozliczony — bank i tak był pusty. Jutro odbijesz.",
+			"Dzień nierozliczony - bank i tak był pusty. Jutro odbijesz.",
 			16, Color(0.8, 0.8, 0.8)))
 	if dane["nowy_rekord"]:
 		kolumna.add_child(_etykieta("NOWY REKORD OSIEDLA!", 24, Color(1.0, 0.5, 1.0)))
 	else:
 		kolumna.add_child(_etykieta("Rekord osiedla: %s" % Game.zl(dane["rekord"]), 16, Color(0.8, 0.8, 0.8)))
 	# --- MELINA: sklep ulepszeń za bank kariery ---
-	kolumna.add_child(_etykieta("— MELINA: ulepszenia na jutro —", 18, Paleta.UI_ZLOTY))
+	kolumna.add_child(_etykieta("- MELINA: ulepszenia na jutro -", 18, Paleta.UI_ZLOTY))
 	_ety_bank = _etykieta("Bank kariery: %s" % Game.zl(Game.bank), 15, Paleta.UI_ZIELONY)
 	kolumna.add_child(_ety_bank)
 	_przyciski_sklepu.clear()
 	for id in Game.ULEPSZENIA_INFO:
 		var przycisk := _przycisk("", _kup_ulepszenie.bind(id))
-		# Niższe przyciski — przy sześciu ulepszeniach ekran musi się zmieścić w 720p
+		# Niższe przyciski - przy sześciu ulepszeniach ekran musi się zmieścić w 720p
 		przycisk.custom_minimum_size = Vector2(420, 28)
 		przycisk.add_theme_font_size_override("font_size", 14)
 		_przyciski_sklepu[id] = przycisk
@@ -760,7 +760,7 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 	kolumna.add_child(_etykieta("Naciśnij R, aby zacząć dzień %d" % (dane["dzien"] + 1), 19, Color(1.0, 0.95, 0.5)))
 
 	_panel_konca.visible = true
-	# Chowamy HUD gry — inaczej podpowiedzi i panel z kasą prześwitują
+	# Chowamy HUD gry - inaczej podpowiedzi i panel z kasą prześwitują
 	# przez ekran podsumowania i robi się nieczytelna sieczka
 	_ety_prompt.text = ""
 	_ety_tutorial.text = ""
@@ -768,7 +768,7 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 	_panel_hud.visible = false
 	_kanal_komunikatow.visible = false
 
-## Zakup w MELINIE — odświeża przyciski i bank.
+## Zakup w MELINIE - odświeża przyciski i bank.
 func _kup_ulepszenie(id: String) -> void:
 	if Game.kup_ulepszenie(id):
 		Sfx.graj("kasa")
@@ -785,10 +785,10 @@ func _odswiez_sklep() -> void:
 		var maks: int = info["ceny"].size()
 		var cena := Game.cena_ulepszenia(id)
 		if cena < 0.0:
-			przycisk.text = "%s (%d/%d) — MAKS" % [info["nazwa"], poziom, maks]
+			przycisk.text = "%s (%d/%d) - MAKS" % [info["nazwa"], poziom, maks]
 			przycisk.disabled = true
 		else:
-			przycisk.text = "%s (%d/%d) — %s | %s" % [
+			przycisk.text = "%s (%d/%d) - %s | %s" % [
 				info["nazwa"], poziom, maks, info["opis"], Game.zl(cena)
 			]
 			przycisk.disabled = false

@@ -1,8 +1,8 @@
 extends Node
-## TRYB ZRZUTÓW (narzędzie deweloperskie) — uruchamiany przez:
+## TRYB ZRZUTÓW (narzędzie deweloperskie) - uruchamiany przez:
 ##   godot -- --autostart --zrzut
 ## Obchodzi kolejne lokacje, zapisuje PNG do user://zrzuty/ i zamyka grę.
-## Służy do sprawdzenia, czy świat i HUD faktycznie wyglądają jak trzeba —
+## Służy do sprawdzenia, czy świat i HUD faktycznie wyglądają jak trzeba -
 ## headless tego nie pokaże, bo nie renderuje obrazu.
 
 const KATALOG := "user://zrzuty"
@@ -17,11 +17,11 @@ const UJECIA: Array = [
 	{"nazwa": "6_dzialki", "gdzie": Vector3(0, 0.2, 36), "obrot": 0.0},
 	{"nazwa": "7_skup", "gdzie": Vector3(0, 0.2, 46), "obrot": 180.0},
 	{"nazwa": "8_obwodnica", "gdzie": Vector3(24, 0.2, 30), "obrot": 135.0},
-	# Obwodnica z bliska — sylwetka aut i odstępy w kolumnie
+	# Obwodnica z bliska - sylwetka aut i odstępy w kolumnie
 	{"nazwa": "13_ruch", "gdzie": Vector3(24, 0.2, 36), "obrot": 200.0},
 	# Automat z napojami przy wejściu do Biedronki
 	{"nazwa": "12_automat", "gdzie": Vector3(4.6, 0.2, -24.2), "obrot": 0.0},
-	# Styk działek z obwodnicą — tu płotki wchodziły na asfalt
+	# Styk działek z obwodnicą - tu płotki wchodziły na asfalt
 	{"nazwa": "11_dzialki_ulica", "gdzie": Vector3(-14, 0.2, 44), "obrot": 250.0},
 ]
 
@@ -55,7 +55,7 @@ func _ready() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/9_motion_lines.png" % KATALOG)
 	print("ZRZUT: 9_motion_lines")
-	# Ekran podsumowania z MELINĄ — sprawdzamy, czy sześć ulepszeń się mieści
+	# Ekran podsumowania z MELINĄ - sprawdzamy, czy sześć ulepszeń się mieści
 	Game.kasa = 87.5
 	Game.statystyki["zlom"] = 6
 	Game.statystyki["oddany_zlom"] = 6
@@ -66,7 +66,7 @@ func _ready() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/10_podsumowanie.png" % KATALOG)
 	print("ZRZUT: 10_podsumowanie")
-	# Pomiar płynności — kontury (drugi przebieg rysowania) podwajają liczbę
+	# Pomiar płynności - kontury (drugi przebieg rysowania) podwajają liczbę
 	# wywołań, więc warto wiedzieć, ile to realnie kosztuje
 	await _zmierz_plynnosc()
 	print("ZRZUTY GOTOWE: %s" % ProjectSettings.globalize_path(KATALOG))
@@ -79,7 +79,7 @@ func _zmierz_plynnosc() -> void:
 		return
 	# Pozycja I OBRÓT muszą być ustalone na sztywno, inaczej pomiar dziedziczy
 	# kierunek po ostatnim ujęciu i wynik zmienia się przy każdej zmianie listy
-	# zdjęć — wtedy nie da się porównać dwóch przebiegów.
+	# zdjęć - wtedy nie da się porównać dwóch przebiegów.
 	gracze[0].global_position = Vector3(0, 0.2, 20)   # widok na całe osiedle
 	gracze[0].rotation.y = deg_to_rad(180.0)          # patrzymy na Biedronkę
 	await get_tree().create_timer(1.0).timeout

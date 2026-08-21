@@ -1,5 +1,5 @@
 extends StaticBody3D
-## WÓZEK SKLEPOWY — stoi przy Biedronce. E = wsiadasz i jeździsz
+## WÓZEK SKLEPOWY - stoi przy Biedronce. E = wsiadasz i jeździsz
 ## (śliska fizyka obsługiwana w player.gd). Podczas jazdy obiekt
 ## na mapie się chowa, a przy wysiadaniu wraca obok gracza.
 
@@ -9,7 +9,7 @@ func _ready() -> void:
 	add_to_group("interakcja")
 	_zbuduj_bryle()
 
-## Materiał w stylu gry (toon + kontur) — patrz scripts/styl.gd.
+## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color) -> StandardMaterial3D:
 	return Styl.obiekt(kolor)
 
@@ -51,9 +51,9 @@ func _zbuduj_bryle() -> void:
 	add_child(_kolizja)
 
 func podpowiedz() -> String:
-	return "E — wsiądź do wózka (Biedronka tego nie pochwala)"
+	return "E - wsiądź do wózka (Biedronka tego nie pochwala)"
 
-## Gracz wsiada — wózek znika z mapy (postać "przejmuje" jego wygląd).
+## Gracz wsiada - wózek znika z mapy (postać "przejmuje" jego wygląd).
 func interakcja(gracz: Node3D) -> void:
 	if not gracz.is_in_group("gracz"):
 		return
@@ -61,7 +61,7 @@ func interakcja(gracz: Node3D) -> void:
 	visible = false
 	_kolizja.set_deferred("disabled", true)
 
-## Gracz wysiada — wózek wraca na mapę we wskazanym miejscu.
+## Gracz wysiada - wózek wraca na mapę we wskazanym miejscu.
 func odstaw(pozycja: Vector3) -> void:
 	global_position = Vector3(pozycja.x, 0, pozycja.z)
 	visible = true

@@ -1,5 +1,5 @@
 class_name Kompas
-## PRZELICZANIE ŚWIATA NA EKRAN — wspólne dla radaru i strzałki nawigacji.
+## PRZELICZANIE ŚWIATA NA EKRAN - wspólne dla radaru i strzałki nawigacji.
 ##
 ## Oba elementy pokazują to samo ("gdzie to jest względem tego, jak stoję"),
 ## więc muszą liczyć to jednym wzorem. Gdy każdy liczył po swojemu, radar
