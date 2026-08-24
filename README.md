@@ -126,7 +126,7 @@ godot -- --autostart --zrzut      # obchodzi mapę i zapisuje PNG do user://zrzu
 godot -- --autostart --snieg      # wymusza zimę (bez czekania do dnia 15)
 ```
 
-`--testy` to 179 sprawdzeń logiki, której nie da się przeklikać w headless: plecak z kategoriami, rozliczenie dnia, rozmieszczenie obiektów na mapie, kolumna aut, dni tygodnia, pogoda, tryb wsioka, Księga wsioka, pojedynek z Heńkiem, kolejka do butelkomatu i wpychanie się, paczka szlugów, ustawienia (razem z zapisem na dysk), zima, bateria magnesu i zasięg zadaszenia. Te same testy chodzą przy każdym pushu - patrz `.github/workflows/testy.yml`.
+`--testy` to 179 sprawdzeń logiki, której nie da się przeklikać w headless: plecak z kategoriami, rozliczenie dnia, rozmieszczenie obiektów na mapie, kolumna aut, dni tygodnia, pogoda, tryb wsioka, Księga wsioka, pojedynek z Heńkiem, kolejka do butelkomatu i wpychanie się, paczka szlugów, ustawienia (razem z zapisem na dysk), zima, bateria magnesu i zasięg zadaszenia.
 
 ## Dźwięk
 
