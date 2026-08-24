@@ -85,9 +85,9 @@ func _npce() -> void:
 	var heniek := Konkurent.new()
 	heniek.position = Vector3(18, 0.2, 18)
 	swiat.add_child(heniek)
-	# Przechodnie. W deszczu ludzie siedzą w domach - zostaje jeden zapaleniec,
-	# a osiedle robi się puste w sposób, który od razu czuć.
-	var ile_przechodniow := 1 if Game.deszcz() else TRASY_PRZECHODNIOW.size()
+	# Przechodnie. W deszczu i na śniegu ludzie siedzą w domach - zostaje jeden
+	# zapaleniec, a osiedle robi się puste w sposób, który od razu czuć.
+	var ile_przechodniow := 1 if Game.mokro() else TRASY_PRZECHODNIOW.size()
 	for i in ile_przechodniow:
 		var trasa: Array = TRASY_PRZECHODNIOW[i]
 		var przechodzien := Przechodzien.new()
@@ -185,13 +185,22 @@ func rozrzuc_butelki() -> void:
 				var kat := randf() * TAU
 				var pozycja := gniazdo + Vector3(cos(kat), 0, sin(kat)) * randf_range(0.4, 2.2)
 				_fant(pozycja, Kolekcjonerski.losowy_typ(Game.mnoznik_szczescia()))
-	# DESZCZ: kto pije w deszczu, ten pije pod dachem. Wiaty butelkomatów
-	# i przystanek pod małym blokiem obrastają szkłem.
-	if Game.deszcz():
-		for wiata: Vector3 in [Vector3(-8.5, 0, 20.0), Vector3(36.0, 0, -12.5), Vector3(0, 0, -22.5)]:
-			for i in randi_range(3, 5):
+	# OPAD: kto pije w deszczu, ten pije pod dachem - a zimą tym bardziej.
+	# Miejsca bierzemy wprost z Plan.DACHY, żeby po przesunięciu wiaty łup
+	# nie został na trawie.
+	if Game.mokro():
+		var dokladka := Balans.SNIEG_FANTY_POD_WIATA if Game.snieg() else 0
+		for i in Plan.DACHY.size():
+			var wiata := Plan.srodek_dachu(i)
+			for j in randi_range(3 + dokladka, 5 + dokladka):
 				var kat := randf() * TAU
 				var pozycja := wiata + Vector3(cos(kat), 0, sin(kat)) * randf_range(0.5, 1.6)
+				# Podcień Biedronki jest PRZYKLEJONY do ściany (bo tak wyglądają
+				# podcienie), więc losowanie wokół jego środka potrafi trafić
+				# w budynek. Zajęte miejsca odrzucamy - fant w ścianie to fant
+				# nie do podniesienia.
+				if Plan.czy_zajete(pozycja.x, pozycja.z, 0.4):
+					continue
 				_fant(pozycja, Kolekcjonerski.losowy_typ(Game.mnoznik_szczescia()))
 
 ## Złom rozrzucony po mapie - przy garażach, działkach i za blokami.

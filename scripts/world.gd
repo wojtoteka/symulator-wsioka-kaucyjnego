@@ -55,8 +55,11 @@ func _teren() -> void:
 	# koloru czyta się jak arkusz papieru, bo w naturze nie ma płaszczyzny bez
 	# ani jednej plamy. Szum daje przetarcia i wydeptane placki - nadal
 	# stylizowane, ale teren wygląda jak teren.
-	_bryly.pudlo(Vector3(0, -0.5, 0), Vector3(120, 1, 120), Paleta.TRAWA, true, false,
-		Styl.teren_szum(Paleta.TRAWA, 0.6, 0.15))
+	# Zimą cała paleta terenu blednie. Same zaspy na jaskrawej zieleni czytają
+	# się jak dziury w teksturze - dopiero wyprany trawnik robi z tego śnieg.
+	var trawa := Styl.zimowo(Paleta.TRAWA) if Game.snieg() else Paleta.TRAWA
+	_bryly.pudlo(Vector3(0, -0.5, 0), Vector3(120, 1, 120), trawa, true, false,
+		Styl.teren_szum(trawa, 0.6, 0.15))
 	# Główny chodnik (północ-południe, do Biedronki) - cienki, bez kolizji
 	_bryly.pudlo(Vector3(0, 0.02, -1), Vector3(4, 0.04, 52), Paleta.CHODNIK, false, false,
 		Styl.teren_szum(Paleta.CHODNIK, 1.1, 0.07))

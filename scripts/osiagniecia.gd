@@ -74,6 +74,9 @@ const LISTA: Array[Dictionary] = [
 	{"id": "dzien_bez_piwa", "nazwa": "Dzień na trzeźwo", "opis": "Wyrób cel dnia bez ani jednego piwa"},
 	{"id": "deszcz", "nazwa": "Pogoda nie przeszkadza", "opis": "Wyrób cel dnia w deszczu"},
 	{"id": "sobota", "nazwa": "Sprzątanie po imprezie", "opis": "Wyrób cel dnia w sobotę"},
+	{"id": "snieg", "nazwa": "Zimowy wsiok", "opis": "Wyrób cel dnia podczas śnieżycy"},
+	{"id": "objazd", "nazwa": "Objazd osiedla", "opis": "Oddaj butelki we wszystkich trzech automatach jednego dnia"},
+	{"id": "bateria", "nazwa": "Bateria z bazaru", "opis": "Wypstrykaj magnes do zera"},
 	{"id": "rywal", "nazwa": "Lepszy od Heńka", "opis": "Zakończ dzień z wyższym utargiem niż Heniek"},
 ]
 

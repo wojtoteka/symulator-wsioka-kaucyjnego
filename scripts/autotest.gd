@@ -36,6 +36,9 @@ func _ready() -> void:
 	_test_osiagniecia()
 	_test_rywalizacja()
 	_test_butelkomaty()
+	_test_zima()
+	_test_magnes()
+	_test_dachy()
 	print("=====================================================")
 	if _bledy == 0:
 		print("WYNIK: wszystkie %d testy przeszły. Kaucja bezpieczna." % _testy)
@@ -427,6 +430,13 @@ func _test_pogoda() -> void:
 	Game.pogoda = "pochmurno"
 	_sprawdz("pochmurno jest pośrodku",
 		Game.zachmurzenie() > 0.0 and Game.zachmurzenie() < 1.0)
+	# mokro() to wspólny mianownik deszczu i śniegu - świat pyta o nie
+	# zamiast sprawdzać dwa warunki w każdym miejscu
+	_sprawdz("pochmurno to jeszcze nie mokro", not Game.mokro())
+	Game.pogoda = "deszcz"
+	_sprawdz("deszcz liczy się jako mokro", Game.mokro())
+	Game.pogoda = "snieg"
+	_sprawdz("śnieg też liczy się jako mokro", Game.mokro() and not Game.deszcz())
 	Game.pogoda = pogoda_pierwotna
 
 ## TRYB WSIOKA - nagroda za pełny Wsiokometr. Kluczowe jest to, że po
@@ -451,6 +461,21 @@ func _test_tryb_wsioka() -> void:
 	_sprawdz("po wygaśnięciu Wsiokometr spada (%.0f%%)" % Game.wsiokometr,
 		Game.wsiokometr <= Balans.TRYB_WSIOKA_PO)
 	_sprawdz("kaucja wraca do normalnej ceny", is_equal_approx(Game.mnoznik_kaucji(), 1.0))
+	# OPÓR KOŃCÓWKI: ostatnie 30% paska musi kosztować więcej niż pierwsze,
+	# inaczej Wsiokometr dojeżdża do stu sam z siebie i tryb traci rangę
+	_wyczysc_plecak()
+	Game.wsiokometr = 0.0
+	Game.dodaj_wsiokometr(10.0)
+	var przyrost_nisko := Game.wsiokometr
+	Game.wsiokometr = Balans.WSIOKOMETR_OPOR_OD
+	Game.dodaj_wsiokometr(10.0)
+	var przyrost_wysoko := Game.wsiokometr - Balans.WSIOKOMETR_OPOR_OD
+	_sprawdz("nad progiem Wsiokometr rośnie wolniej (%.1f vs %.1f)" % [
+		przyrost_wysoko, przyrost_nisko], przyrost_wysoko < przyrost_nisko)
+	_sprawdz("opór nie zatrzymuje paska całkiem", przyrost_wysoko > 0.0)
+	Game.wsiokometr = 0.0
+	Game.tryb_wsioka = 0.0
+	Game._legenda_ogloszona = false
 	_wyczysc_plecak()
 
 ## KSIĘGA WSIOKA. Sam fakt, że wpisy się przyznają, to za mało - najgorsze
@@ -552,6 +577,105 @@ func _test_butelkomaty() -> void:
 		najmniejszy_odstep >= 20.0)
 	_sprawdz("kolejka nie trwa dłużej niż kilkanaście sekund",
 		Balans.KOLEJKA_MAX <= 15.0 and Balans.KOLEJKA_MIN > 0.0)
+
+## ZIMA. Śnieg nie może być "deszczem w innym kolorze": ma być ślisko BARDZIEJ,
+## ma się losować dopiero od pewnego dnia kariery i ma zmieniać opis dnia.
+func _test_zima() -> void:
+	print("
+[20] Zima wchodzi na osiedle")
+	var dzien_pierwotny := Game.dzien
+	var pogoda_pierwotna := Game.pogoda
+	Game.dzien = Balans.ZIMA_OD_DNIA - 1
+	_sprawdz("przed progiem nie ma zimy", not Game.zima())
+	var przed_zima := {}
+	for i in 200:
+		Game._losuj_pogode()
+		przed_zima[Game.pogoda] = true
+	_sprawdz("przed zimą śnieg nie pada w ogóle", not przed_zima.has("snieg"))
+	Game.dzien = Balans.ZIMA_OD_DNIA
+	_sprawdz("od dnia %d jest zima" % Balans.ZIMA_OD_DNIA, Game.zima())
+	var w_zimie := {}
+	for i in 200:
+		Game._losuj_pogode()
+		w_zimie[Game.pogoda] = true
+	_sprawdz("zimą sypie śnieg", w_zimie.has("snieg"))
+	_sprawdz("zimą deszcz zamienia się w śnieg", not w_zimie.has("deszcz"))
+	# Mnożniki: na śniegu ma być ślisko bardziej niż na mokrym
+	Game.pogoda = "deszcz"
+	var deszczowa_przyczepnosc := Game.mnoznik_przyczepnosci()
+	var deszczowe_hamowanie := Game.mnoznik_hamowania()
+	Game.pogoda = "snieg"
+	_sprawdz("na śniegu pojazdy trzymają się gorzej niż w deszczu",
+		Game.mnoznik_przyczepnosci() < deszczowa_przyczepnosc)
+	_sprawdz("na śniegu hamuje się gorzej niż w deszczu",
+		Game.mnoznik_hamowania() < deszczowe_hamowanie)
+	_sprawdz("śnieżyca ma własny opis pogody", Game.opis_pogody().contains("śnieg"))
+	_sprawdz("opis dnia mówi o zimie, nie o dniu tygodnia",
+		Game.opis_dnia().to_lower().contains("zima"))
+	_sprawdz("zachmurzenie przy śniegu w zakresie 0-1",
+		Game.zachmurzenie() > 0.0 and Game.zachmurzenie() <= 1.0)
+	Game.dzien = dzien_pierwotny
+	Game.pogoda = pogoda_pierwotna
+	Game._losuj_kurs_zlomu()
+
+## BATERIA MAGNESU. Sedno: prąd schodzi tylko za PRACĘ, doładowanie nie może
+## przelać się ponad pojemność, a pusty magnes ma przestać działać - inaczej
+## całe ograniczenie jest dekoracją.
+func _test_magnes() -> void:
+	print("
+[21] Magnes ma baterię, nie nieskończoność")
+	var poziom_pierwotny: int = Game.ulepszenia["magnes"]
+	var bateria_pierwotna := Game.magnes_bateria
+	Game.ulepszenia["magnes"] = 0
+	Game.magnes_bateria = Balans.MAGNES_BATERIA
+	_sprawdz("bez ulepszenia magnes nie działa", not Game.magnes_dziala())
+	Game.ulepszenia["magnes"] = 1
+	_sprawdz("z ulepszeniem i prądem magnes działa", Game.magnes_dziala())
+	Game.zuzyj_magnes(5.0)
+	_sprawdz("praca zjada baterię (%.0f s)" % Game.magnes_bateria,
+		is_equal_approx(Game.magnes_bateria, Balans.MAGNES_BATERIA - 5.0))
+	Game.doladuj_magnes()
+	_sprawdz("doładowanie nie przelewa się ponad pojemność",
+		Game.magnes_bateria <= Balans.MAGNES_BATERIA)
+	Game.magnes_bateria = 2.0
+	Game.doladuj_magnes()
+	_sprawdz("doładowanie faktycznie dokłada prądu (%.0f s)" % Game.magnes_bateria,
+		Game.magnes_bateria > 2.0)
+	Game.zuzyj_magnes(999.0)
+	_sprawdz("bateria nie schodzi poniżej zera", Game.magnes_bateria >= 0.0)
+	_sprawdz("pusty magnes przestaje działać", not Game.magnes_dziala())
+	_sprawdz("wypstrykana bateria trafia do Księgi", Osiagniecia.czy_zdobyte("bateria"))
+	Game.ulepszenia["magnes"] = poziom_pierwotny
+	Game.magnes_bateria = bateria_pierwotna
+
+## DACHY. Plan.DACHY jest jedynym źródłem prawdy o zadaszeniu - pyta o nie
+## i rozrzucanie łupu, i miks dźwięku deszczu. Gdyby prostokąt rozminął się
+## z wiatą, butelki leżałyby na deszczu, a blacha bębniła nad trawnikiem.
+func _test_dachy() -> void:
+	print("
+[22] Wiaty faktycznie mają dach")
+	_sprawdz("na mapie są co najmniej trzy zadaszone miejsca (%d)" % Plan.DACHY.size(),
+		Plan.DACHY.size() >= 3)
+	var poprawne := true
+	for d: Array in Plan.DACHY:
+		if d.size() != 4 or d[0] >= d[1] or d[2] >= d[3]:
+			poprawne = false
+	_sprawdz("każdy dach ma sensowny prostokąt", poprawne)
+	var srodki_ok := true
+	for i in Plan.DACHY.size():
+		var srodek := Plan.srodek_dachu(i)
+		if not Plan.pod_dachem(srodek.x, srodek.z):
+			srodki_ok = false
+	_sprawdz("środek każdego dachu leży pod tym dachem", srodki_ok)
+	# Butelkomaty z wiatami MUSZĄ stać w zadaszonej strefie
+	var pod_dachem := 0
+	for automat in get_tree().get_nodes_in_group("butelkomat"):
+		if Plan.pod_dachem(automat.global_position.x, automat.global_position.z):
+			pod_dachem += 1
+	_sprawdz("wszystkie trzy butelkomaty stoją pod dachem (%d)" % pod_dachem,
+		pod_dachem >= 3)
+	_sprawdz("środek trawnika dachu nie ma", not Plan.pod_dachem(0.0, 10.0))
+	_sprawdz("obwodnica dachu nie ma", not Plan.pod_dachem(30.0, 0.0))
 
 ## Symulacja kolumny aut na pętli tą samą logiką, co w grze.
 ## Zwraca false, jeśli w którymkolwiek momencie odstęp spadł poniżej długości

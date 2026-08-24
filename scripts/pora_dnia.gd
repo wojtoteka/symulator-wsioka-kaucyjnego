@@ -63,6 +63,20 @@ const DESZCZ_MOC := 0.5           # mnożnik siły słońca
 const DESZCZ_MGLA := 5.0          # mnożnik gęstości mgły
 const DESZCZ_NASYCENIE := 0.78    # mnożnik saturacji post-processu
 
+## ...a do czego przy ŚNIEŻYCY. Zima to nie ciemniejszy deszcz: zamieć jest
+## JASNA. Światło odbite od śniegu rozświetla wszystko od dołu, cienie prawie
+## znikają, mgła gęstnieje jeszcze bardziej, a kolory blakną do bieli.
+## Te same suwaki, przeciwne wartości - i dlatego zima od razu czyta się
+## jako inna pora roku, a nie jako "deszcz w innym kolorze".
+const SNIEG_SWIATLO := Color(0.94, 0.96, 1.0)
+const SNIEG_NIEBO_GORA := Color(0.70, 0.74, 0.80)
+const SNIEG_NIEBO_HORYZONT := Color(0.88, 0.90, 0.93)
+const SNIEG_AMBIENT := Color(0.86, 0.89, 0.95)
+const SNIEG_MOC := 0.72           # słabsze słońce, ale mocniejsze odbicie
+const SNIEG_AMBIENT_MOC := 1.45   # to śnieg pod nogami świeci, nie niebo
+const SNIEG_MGLA := 8.0
+const SNIEG_NASYCENIE := 0.62
+
 ## Odświeżanie 10 razy na sekundę. Co klatkę byłoby marnotrawstwem: przy
 ## pięciominutowym dniu kolory zmieniają się o ułamek procenta na klatkę,
 ## a przemalowanie proceduralnego nieba nie jest darmowe.
@@ -74,12 +88,14 @@ var _env: Environment
 var _niebo: ProceduralSkyMaterial
 var _odliczanie := 0.0
 var _zachmurzenie := 0.0      # płynnie goni Game.zachmurzenie()
+var _bialo := 0.0             # 0 = deszcz/pochmurno, 1 = śnieżyca
 var _faza_nazwa := "poranek"
 
 func _ready() -> void:
 	_zbuduj_slonce()
 	_zbuduj_srodowisko()
 	_zachmurzenie = Game.zachmurzenie()
+	_bialo = 1.0 if Game.snieg() else 0.0
 	_zastosuj(_stan_dla(_postep()))
 
 ## Nazwa bieżącej pory dnia - HUD pokazuje ją obok zegara.
@@ -94,6 +110,7 @@ func _process(delta: float) -> void:
 	# Zachmurzenie dochodzi płynnie - dzięki temu przejście do deszczu
 	# w trakcie dnia (i powrót) nie jest cięciem montażowym
 	_zachmurzenie = move_toward(_zachmurzenie, Game.zachmurzenie(), 0.6 * ODSWIEZANIE)
+	_bialo = move_toward(_bialo, 1.0 if Game.snieg() else 0.0, 0.6 * ODSWIEZANIE)
 	_zastosuj(_stan_dla(_postep()))
 
 ## Postęp rundy 0..1. W menu głównym stoimy na porannym świetle - ekran
@@ -132,26 +149,39 @@ func _stan_dla(t: float) -> Dictionary:
 ## Przełożenie policzonego stanu na scenę - z domieszką pogody.
 func _zastosuj(stan: Dictionary) -> void:
 	var ch := _zachmurzenie
+	var b := _bialo
+	# Cel pogodowy: przy śniegu ta sama oś prowadzi do zupełnie innych kolorów.
+	# Dzięki temu zima jest osobnym stanem, a nie przełącznikiem obok deszczu.
+	var cel_swiatlo := DESZCZ_SWIATLO.lerp(SNIEG_SWIATLO, b)
+	var cel_gora := DESZCZ_NIEBO_GORA.lerp(SNIEG_NIEBO_GORA, b)
+	var cel_horyzont := DESZCZ_NIEBO_HORYZONT.lerp(SNIEG_NIEBO_HORYZONT, b)
+	var cel_ambient := DESZCZ_AMBIENT.lerp(SNIEG_AMBIENT, b)
+	var cel_moc := lerpf(DESZCZ_MOC, SNIEG_MOC, b)
+	var cel_mgla := lerpf(DESZCZ_MGLA, SNIEG_MGLA, b)
+	var cel_nasycenie := lerpf(DESZCZ_NASYCENIE, SNIEG_NASYCENIE, b)
+
 	var kat: Vector2 = stan["slonce"]
 	slonce.rotation_degrees = Vector3(kat.x, kat.y, 0)
-	slonce.light_color = Color(stan["swiatlo"]).lerp(DESZCZ_SWIATLO, ch)
-	slonce.light_energy = float(stan["moc"]) * lerpf(1.0, DESZCZ_MOC, ch)
+	slonce.light_color = Color(stan["swiatlo"]).lerp(cel_swiatlo, ch)
+	slonce.light_energy = float(stan["moc"]) * lerpf(1.0, cel_moc, ch)
 	# W deszczu cienie miękną i bledną - ostry cień przy zachmurzonym niebie
-	# to najczęstszy zdradliwy detal "renderu"
-	slonce.shadow_opacity = lerpf(0.82, 0.35, ch)
-	slonce.shadow_blur = lerpf(1.4, 3.2, ch)
+	# to najczęstszy zdradliwy detal "renderu". Na śniegu znikają prawie zupełnie.
+	slonce.shadow_opacity = lerpf(0.82, lerpf(0.35, 0.18, b), ch)
+	slonce.shadow_blur = lerpf(1.4, lerpf(3.2, 4.2, b), ch)
 
-	var horyzont: Color = Color(stan["niebo_horyzont"]).lerp(DESZCZ_NIEBO_HORYZONT, ch)
-	_niebo.sky_top_color = Color(stan["niebo_gora"]).lerp(DESZCZ_NIEBO_GORA, ch)
+	var horyzont: Color = Color(stan["niebo_horyzont"]).lerp(cel_horyzont, ch)
+	_niebo.sky_top_color = Color(stan["niebo_gora"]).lerp(cel_gora, ch)
 	_niebo.sky_horizon_color = horyzont
 	_niebo.ground_horizon_color = horyzont
 
-	_env.ambient_light_color = Color(stan["ambient"]).lerp(DESZCZ_AMBIENT, ch)
-	_env.ambient_light_energy = float(stan["ambient_moc"]) * lerpf(1.0, 0.9, ch)
+	_env.ambient_light_color = Color(stan["ambient"]).lerp(cel_ambient, ch)
+	# Zimą ambient nie gaśnie, tylko ROŚNIE - to śnieg pod nogami odbija światło
+	var moc_ambientu := lerpf(1.0, lerpf(0.9, SNIEG_AMBIENT_MOC, b), ch)
+	_env.ambient_light_energy = float(stan["ambient_moc"]) * moc_ambientu
 	_env.fog_light_color = horyzont
-	_env.fog_density = float(stan["mgla"]) * lerpf(1.0, DESZCZ_MGLA, ch)
-	_env.tonemap_exposure = float(stan["ekspozycja"]) * lerpf(1.0, 0.92, ch)
-	_env.adjustment_saturation = 1.16 * lerpf(1.0, DESZCZ_NASYCENIE, ch)
+	_env.fog_density = float(stan["mgla"]) * lerpf(1.0, cel_mgla, ch)
+	_env.tonemap_exposure = float(stan["ekspozycja"]) * lerpf(1.0, lerpf(0.92, 1.04, b), ch)
+	_env.adjustment_saturation = 1.16 * lerpf(1.0, cel_nasycenie, ch)
 	_pomaluj_chmury(horyzont, ch)
 
 ## Chmury dostają kolor horyzontu - o zachodzie robią się różowe, w deszczu

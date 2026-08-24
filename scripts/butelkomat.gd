@@ -6,18 +6,35 @@ extends StaticBody3D
 ## prób, więc gracz z pełnym plecakiem nie miał dokąd pójść.
 ##
 ## Do tego dochodzi KOLEJKA: co jakiś czas przy automacie staje babcia
-## z siatą puszek i przez kilka sekund nie ma podejścia. Kolejka leci sama,
-## niezależnie od tego, gdzie jesteś - i o to chodzi. Pytanie brzmi:
+## z siatą puszek i przez kilka sekund nie ma podejścia. Pytanie brzmi:
 ## stoję osiem sekund czy biegnę czterdzieści metrów do następnego?
+##
+## Żeby to pytanie miało dwie odpowiedzi, potrzebne były dwie rzeczy:
+##   - kolejka ROŚNIE, gdy w niej stoisz (dochodzą kolejni) - patrz
+##     _dokladaj_do_kolejki(). Bez tego przeczekanie było zawsze tańsze.
+##   - automat się MĘCZY: świeżo użyty zapycha się chętniej (_zmeczenie).
+##     Bez tego trzy niezależnie losujące punkty gwarantowały, że zawsze
+##     któryś działa, i wąskie gardło zniknęło za bardzo.
 
 ## Nazwa punktu do komunikatów i podpowiedzi ("przy Biedronce").
 var nazwa_punktu := "przy Biedronce"
+
+## Kto dochodzi do kolejki, gdy w niej stoisz. Kolejka, która rośnie, zamienia
+## "przeczekam" z darmowej opcji w decyzję - patrz Balans.KOLEJKA_DOKLADKA_CO.
+const TEKSTY_DOKLADKI: Array[String] = [
+	"Za tobą stanął pan Mietek. Z reklamówką. Pełną.",
+	"Doszła sąsiadka z drugiej klatki. \"Ja tylko zapytam\".",
+	"Kolejka się wydłuża. Ktoś przyniósł skrzynkę.",
+	"Babcia zawołała koleżankę. Koleżanka też ma puszki.",
+]
 
 var _ekran: MeshInstance3D
 var _material_ekranu: StandardMaterial3D
 var _babcia: Node3D          # wizualna kolejka - pokazuje się, gdy ktoś stoi
 var _kolejka := 0.0          # ile sekund jeszcze potrwa obsługa babci
 var _do_nowej_babci := 0.0   # odliczanie do kolejnego "gościa"
+var _do_dokladki := 0.0      # odliczanie do kolejnego gościa DOŁĄCZAJĄCEGO do kolejki
+var _zmeczenie := 0.0        # dodatek do szansy zapchania po świeżej transakcji
 
 func _ready() -> void:
 	add_to_group("interakcja")
@@ -44,8 +61,11 @@ func czy_kolejka() -> bool:
 func _process(delta: float) -> void:
 	if Game.w_menu or not Game.gra_trwa:
 		return
+	# Automat "odpoczywa" - zmęczenie po transakcji schodzi z czasem
+	_zmeczenie = maxf(_zmeczenie - Balans.ZMECZENIE_SPADEK * delta, 0.0)
 	if _kolejka > 0.0:
 		_kolejka -= delta
+		_dokladaj_do_kolejki(delta)
 		if _kolejka <= 0.0:
 			_ustaw_kolejke(0.0)
 			_do_nowej_babci = randf_range(Balans.KOLEJKA_PRZERWA_MIN, Balans.KOLEJKA_PRZERWA_MAX)
@@ -60,8 +80,40 @@ func _process(delta: float) -> void:
 
 func _ustaw_kolejke(sekundy: float) -> void:
 	_kolejka = sekundy
+	_do_dokladki = Balans.KOLEJKA_DOKLADKA_CO
 	if is_instance_valid(_babcia):
 		_babcia.visible = sekundy > 0.0
+
+## KOLEJKA ROŚNIE, GDY W NIEJ STOISZ.
+##
+## Wcześniej kolejka leciała sama, niezależnie od gracza - i to był błąd
+## projektowy: skoro czekanie nic nie kosztowało, a drugi automat leżał
+## czterdzieści metrów dalej, "stoję" było ZAWSZE lepsze. Wybór z jedną dobrą
+## odpowiedzią to nie wybór. Teraz stanie pod automatem dokłada kolejnych
+## gości (do sufitu KOLEJKA_MAKS), więc przeczekanie ma swoją cenę - a bieg
+## do sąsiedniego punktu przestaje być karą za niecierpliwość.
+func _dokladaj_do_kolejki(delta: float) -> void:
+	if _kolejka >= Balans.KOLEJKA_MAKS or not _gracz_w_poblizu():
+		return
+	_do_dokladki -= delta
+	if _do_dokladki > 0.0:
+		return
+	_do_dokladki = Balans.KOLEJKA_DOKLADKA_CO
+	if randf() >= Balans.KOLEJKA_SZANSA_DOKLADKI:
+		return
+	_kolejka = minf(_kolejka + randf_range(
+		Balans.KOLEJKA_DOKLADKA_MIN, Balans.KOLEJKA_DOKLADKA_MAX), Balans.KOLEJKA_MAKS)
+	Sfx.graj("blad", -16.0)
+	Game.pokaz_komunikat("%s (jeszcze %d s)" % [TEKSTY_DOKLADKI.pick_random(), int(ceilf(_kolejka))])
+
+## Czy gracz stoi na tyle blisko, żeby liczyć się jako czekający w kolejce.
+func _gracz_w_poblizu() -> bool:
+	for gracz in get_tree().get_nodes_in_group("gracz"):
+		if not is_instance_valid(gracz):
+			continue
+		if global_position.distance_to(gracz.global_position) <= Balans.KOLEJKA_ZASIEG:
+			return true
+	return false
 
 ## Cios pięścią w butelkomat. Zapchany - pomaga. Sprawny - może się zapchać.
 func oberwij(_gracz: Node3D) -> void:
@@ -215,17 +267,30 @@ func interakcja(_gracz: Node3D) -> void:
 		else:
 			Game.pokaz_komunikat("Plecak pusty. Butelkomat patrzy na Ciebie z politowaniem.")
 		return
-	# Losowe zapchanie - bo prawdziwy butelkomat też tak robi
-	if randf() < Balans.SZANSA_ZAPCHANIA:
+	# Losowe zapchanie - bo prawdziwy butelkomat też tak robi.
+	# Do bazowej szansy dochodzi ZMĘCZENIE tego konkretnego automatu: trzy
+	# punkty losujące niezależnie sprawiały, że statystycznie zawsze któryś
+	# działał, i wąskie gardło zniknęło za bardzo. Teraz automat, do którego
+	# właśnie wrzuciłeś plecak, jest bardziej kapryśny - opłaca się krążyć.
+	if randf() < Balans.SZANSA_ZAPCHANIA + _zmeczenie:
 		_zapchany = true
 		Sfx.graj("blad")
-		Game.pokaz_komunikat("BUTELKOMAT ZAPCHANY! Ktoś wepchnął słoik po ogórkach. Kopnij go (E).")
+		if _zmeczenie > 0.05:
+			Game.pokaz_komunikat("ZAPCHANY. Ten automat ma dziś przepracowane - spróbuj innego punktu.")
+		else:
+			Game.pokaz_komunikat("BUTELKOMAT ZAPCHANY! Ktoś wepchnął słoik po ogórkach. Kopnij go (E).")
 		_ustaw_kolor_ekranu(Color(1, 0.2, 0.2))
 		return
 	# Jednoręki bandyta: kasa nalicza się od razu, ale dźwięk i komunikat
 	# celebrują wygraną - seria cyknięć przyspiesza aż do "jackpotu"
 	_liczy = true
 	var wynik: Dictionary = Game.oddaj_wszystko()
+	_zmeczenie = minf(_zmeczenie + Balans.ZMECZENIE_ZA_KURS, Balans.ZMECZENIE_MAKS)
+	Game.zanotuj_punkt(nazwa_punktu)
+	# Gniazdko serwisowe butelkomatu - jedyne miejsce na osiedlu, gdzie magnes
+	# z bazaru łapie prąd. Ładowanie leży dokładnie tam, gdzie i tak trzeba
+	# dojść, więc dzień domyka się w pętlę zamiast rozjeżdżać.
+	Game.doladuj_magnes()
 	Game.postep_zlecenia("butelki_oddane", wynik["ile"])
 	Sfx.graj_bandyta(wynik["ile"])
 	Game.pokaz_komunikat("Butelkomat mieli %d szt. Bębny się kręcą..." % wynik["ile"])

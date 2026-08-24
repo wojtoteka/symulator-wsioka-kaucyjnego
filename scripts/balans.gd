@@ -58,6 +58,27 @@ const DESZCZ_PRZYCZEPNOSC := 0.45  # mnożnik przyczepności pojazdów na mokrym
 const DESZCZ_HAMOWANIE := 0.55     # mnożnik hamowania na piechotę (ślizg)
 const DESZCZ_PRZYSPIESZENIE := 0.7 # i wolniejsze nabieranie prędkości
 
+# --- ZIMA ---
+# Kariera trwa tygodniami, a osiedle wyglądało cały czas tak samo. Od pewnego
+# dnia przychodzi zima: to, co byłoby deszczem, pada jako ŚNIEG, a do tego
+# dochodzi własna szansa na śnieżycę. Cała infrastruktura pogody już stała -
+# doszła biała paleta i ślizganie mocniejsze niż na mokrym.
+const ZIMA_OD_DNIA := 15           # od tego dnia kariery na osiedle wchodzi zima
+const SZANSA_SNIEGU := 0.34        # dodatkowo, ponad "deszcz zamieniony w śnieg"
+const SNIEG_PRZYCZEPNOSC := 0.28   # na ubitym śniegu wózek jedzie bokiem
+const SNIEG_HAMOWANIE := 0.4
+const SNIEG_PRZYSPIESZENIE := 0.62
+## Zimą ludzie piją pod wiatami jeszcze chętniej niż w deszczu
+const SNIEG_FANTY_POD_WIATA := 2
+
+# --- DESZCZ POD DACHEM ---
+# Szum deszczu grał wszędzie tak samo, więc wiaty były tylko bryłą. Pod dachem
+# szum przygasa, a jego miejsce zajmuje bębnienie o blachę - i nagle wiadomo,
+# że się gdzieś schowałeś.
+const DACH_ZASIEG := 2.6           # promień strefy "pod dachem" wokół wiaty
+const DACH_SZUM_DB := -26.0        # przygaszony deszcz na zewnątrz wiaty
+const DACH_BEBNIENIE_DB := -11.0   # blacha nad głową
+
 # --- TRYB WSIOKA (Wsiokometr 100%) ---
 # Pasek 0-100 rósł i spadał, i na tym się kończyło. Teraz pełny Wsiokometr
 # odpala kilkanaście sekund szaleństwa: podwójna kaucja, sepia i disco polo
@@ -75,6 +96,24 @@ const KOLEJKA_MIN := 6.0
 const KOLEJKA_MAX := 11.0
 const KOLEJKA_PRZERWA_MIN := 22.0  # co ile automat losuje nową babcię
 const KOLEJKA_PRZERWA_MAX := 45.0
+## KOLEJKA ROŚNIE, GDY W NIEJ STOISZ. Bez tego czekanie było zawsze tańsze niż
+## bieg czterdzieści metrów dalej - a wybór, który ma tylko jedną dobrą
+## odpowiedź, nie jest wyborem. Teraz stanie pod automatem dokłada kolejnych
+## gości, więc "przeczekam" ma swoją cenę.
+const KOLEJKA_ZASIEG := 6.0        # z tej odległości liczysz się jako stojący
+const KOLEJKA_DOKLADKA_CO := 4.0   # co tyle sekund ktoś MOŻE dojść
+const KOLEJKA_SZANSA_DOKLADKI := 0.6
+const KOLEJKA_DOKLADKA_MIN := 2.5
+const KOLEJKA_DOKLADKA_MAX := 4.5
+const KOLEJKA_MAKS := 20.0         # sufit - osiedle jest złośliwe, nie okrutne
+
+## ZMĘCZENIE AUTOMATU. Trzy punkty losowały zapchanie niezależnie, więc
+## statystycznie zawsze któryś działał i wąskie gardło zniknęło za bardzo.
+## Teraz automat, z którego właśnie korzystałeś, zapycha się CHĘTNIEJ - opłaca
+## się krążyć między punktami, a nie dreptać w kółko do jednego.
+const ZMECZENIE_ZA_KURS := 0.13    # o tyle rośnie szansa zapchania po transakcji
+const ZMECZENIE_MAKS := 0.3        # sufit dodatku
+const ZMECZENIE_SPADEK := 0.02     # na sekundę - automat "odpoczywa"
 
 # --- Sklepik: na co przepuścić kaucję ---
 const CENA_ENERGETYKA := 5.0
@@ -152,6 +191,13 @@ const SZANSA_KOPNIAKA_W_SMIETNIK := 0.5   # że coś wypadnie po ciosie
 const MAGNES_ZASIEG := 3.0         # z ilu metrów fanty same lecą do plecaka
 const MAGNES_SILA := 7.0           # jak szybko przyciąga (m/s przy pełnym zasięgu)
 const MAGNES_ZLAPANIE := 0.7       # z tej odległości fant wpada do plecaka
+## BATERIA Z BAZARU. Magnes bez ograniczeń robił z celu dnia formalność:
+## wystarczyło przebiec trawnik. Teraz ma zasilanie na kilkadziesiąt sekund
+## PRACY (samo chodzenie nie zużywa nic), a doładowuje się przy butelkomacie -
+## czyli w miejscu, do którego i tak trzeba wracać.
+const MAGNES_BATERIA := 40.0       # sekundy realnego przyciągania na dzień
+const MAGNES_LADOWANIE := 14.0     # ile wraca za jedną transakcję w automacie
+const MAGNES_OSTRZEZENIE := 8.0    # przy tylu sekundach magnes zaczyna marudzić
 
 # --- Wózek sklepowy ---
 const WOZEK_MAKS := 11.0
@@ -197,10 +243,25 @@ const LOT_ODSTEP := 2.5            # sekundy między płatnymi trikami
 const WSIOKOMETR_BUTELKA := 4.0
 const WSIOKOMETR_ZLOTO := 8.0
 const WSIOKOMETR_SMIETNIK := 2.0
-const WSIOKOMETR_SPADEK := 4.0     # na sekundę bezczynności
+const WSIOKOMETR_SPADEK := 6.0     # na sekundę bezczynności
+## Pasek pełzł w górę sam z siebie, bo spadał TYLKO przy staniu w miejscu.
+## TRYB WSIOKA odpalał się więc "przy okazji", zamiast być czymś, po co się
+## sięga. Teraz Wsiokometr ucieka cały czas, a ostatnie 30% stawia opór -
+## końcówkę trzeba wyszarpać serią, nie samym graniem.
+const WSIOKOMETR_SPADEK_STALY := 1.7   # na sekundę, niezależnie od ruchu
+const WSIOKOMETR_OPOR_OD := 70.0       # powyżej tego progu przyrost maleje
+const WSIOKOMETR_OPOR := 0.45          # mnożnik przyrostu nad progiem
 
 # --- NPC ---
 const PREDKOSC_HENKA := 3.2
+## Heniek odpoczywał 4-7 s po każdej butelce, więc przez pięć minut robił
+## kilkanaście złotych, a premia za wygraną była praktycznie gwarantowana.
+## Rywal, którego nie da się przegrać, to nie rywal - tylko dodatek do wypłaty.
+const HENIEK_ODPOCZYNEK_MIN := 2.0
+const HENIEK_ODPOCZYNEK_MAX := 3.6
+const HENIEK_WPRAWA_ZA_DZIEN := 0.06   # o tyle krótszy odpoczynek z każdym dniem
+const HENIEK_WPRAWA_MAKS := 0.85       # ...ale nie szybciej niż o tyle
+const HENIEK_ZLOTO_OD_DNIA := 4        # od tego dnia poznaje się na złocie
 const ILE_AUT := 8                 # auta na obwodnicy (pętla ma ~280 m)
 ## Warstwa kolizji dla brył, które mają zatrzymywać WYŁĄCZNIE wysięgnik kamery.
 ## Korony drzew miały kolizję tylko na pniu, więc kamera TPP wjeżdżała

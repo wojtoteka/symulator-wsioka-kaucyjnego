@@ -21,6 +21,18 @@ const WNETRZE := Vector3(60, -50, -60)            # środek podziemnego sklepu
 const WEJSCIE_SKLEPU := WNETRZE + Vector3(0, 0.1, 3.2)   # lądowanie w środku
 const WYJSCIE_SKLEPU := Vector3(0, 0.1, -25.5)    # lądowanie na osiedlu
 
+## DACHY - miejsca, w których nad głową gracza coś jest. Prostokąty jak wyżej.
+##
+## Trzymamy je TUTAJ, a nie w skrypcie wiaty, bo pytają o nie dwie zupełnie
+## różne warstwy: SwiatNpc (gdzie w deszczu chowają się butelki) i Pogoda
+## (kiedy przygasić szum deszczu i włączyć bębnienie o blachę). Gdyby każda
+## liczyła to sama, po pierwszym przesunięciu wiaty jedna z nich by kłamała.
+const DACHY: Array = [
+	[-10.3, -6.7, 17.2, 20.8],    # wiata pod małym blokiem
+	[35.2, 38.8, -14.8, -11.2],   # wiata przy garażach
+	[-5.5, 8.5, -28.4, -25.4],    # podcień przed wejściem do Biedronki
+]
+
 const JEZDNIE: Array = [
 	[-33.0, 33.0, -49.0, -43.0],   # północ - ZA Biedronką, nie przez nią
 	[-33.0, 33.0, 35.0, 41.0],     # południe
@@ -63,6 +75,18 @@ static func obrys_dzialki(srodek_x: float) -> Array:
 ## Działki celowo NIE liczą się jako zajęte: w środku ogródka stoi altanka
 ## i rośnie drzewko owocowe i tak ma być. Do rozrzutu fantów służy osobne
 ## sprawdzenie niżej, bo tam ogrodzony teren wypada omijać.
+## Czy punkt (x, z) jest pod jakimś dachem - patrz DACHY.
+static func pod_dachem(x: float, z: float) -> bool:
+	for d: Array in DACHY:
+		if x >= d[0] and x <= d[1] and z >= d[2] and z <= d[3]:
+			return true
+	return false
+
+## Środek dachu numer "i" - używane przy rozrzucaniu łupu pod wiaty.
+static func srodek_dachu(i: int) -> Vector3:
+	var d: Array = DACHY[i % DACHY.size()]
+	return Vector3((d[0] + d[1]) * 0.5, 0.0, (d[2] + d[3]) * 0.5)
+
 static func czy_zajete(x: float, z: float, margines := 0.0) -> bool:
 	return _w_strefach(JEZDNIE + BUDYNKI, x, z, margines)
 

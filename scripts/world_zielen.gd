@@ -10,6 +10,11 @@ extends Bryly
 
 const ILE_KAMIENI := Balans.ILE_KAMIENI
 
+## Kolor "jak dziś": zimą przyprószony śniegiem, poza zimą bez zmian.
+## Jedno miejsce decyzji, żeby trawa, korony i krzaki blakły razem.
+func _zima(kolor: Color, sila := 0.5) -> Color:
+	return Styl.zimowo(kolor, sila) if Game.snieg() else kolor
+
 func zbuduj() -> void:
 	_zielen()
 	_kamienie()
@@ -41,7 +46,8 @@ func _zielen() -> void:
 		var plyta := BoxMesh.new()
 		plyta.size = Vector3(randf_range(1.5, 3.5), 0.02, randf_range(1.5, 3.5))
 		laty.mesh = plyta
-		laty.material_override = material(Paleta.TRAWA_CIEMNA if randf() < 0.5 else Paleta.TRAWA_JASNA)
+		var odcien := Paleta.TRAWA_CIEMNA if randf() < 0.5 else Paleta.TRAWA_JASNA
+		laty.material_override = material(_zima(odcien))
 		laty.position = Vector3(
 			signf(randf() - 0.5) * randf_range(3.5, 26.0), 0.012, randf_range(-26.0, 30.0)
 		)
@@ -75,7 +81,10 @@ func drzewo(pozycja: Vector3) -> void:
 		kula_mesh.mesh = kula
 		# Odcień per kula, nie per gatunek - inaczej wszystkie drzewa na mapie
 		# mają dokładnie te same trzy zielenie i widać, że to jeden prefab
-		kula_mesh.material_override = material(Styl.wariant(dane[2], 0.08), false, Styl.KONTUR_OBIEKT)
+		# Zimą korona jest przyprószona - inaczej nad białym osiedlem wisiałyby
+		# soczyście zielone kule i cała pora roku by się rozjeżdżała
+		kula_mesh.material_override = material(
+			_zima(Styl.wariant(dane[2], 0.08), 0.62), false, Styl.KONTUR_OBIEKT)
 		kula_mesh.position = pozycja + dane[0] * skala
 		kula_mesh.rotation.y = randf() * TAU
 		swiat.add_child(kula_mesh)
@@ -101,7 +110,8 @@ func krzak(pozycja: Vector3) -> void:
 	mesh.mesh = kula
 	# Każdy krzak w swoim odcieniu - rząd identycznych zielonych kul
 	# natychmiast zdradza, że to kopie jednego obiektu
-	mesh.material_override = material(Styl.wariant(Paleta.KRZAK, 0.09), false, Styl.KONTUR_OBIEKT)
+	mesh.material_override = material(
+		_zima(Styl.wariant(Paleta.KRZAK, 0.09), 0.62), false, Styl.KONTUR_OBIEKT)
 	mesh.position = pozycja + Vector3(0, kula.height * 0.35, 0)
 	mesh.rotation.y = randf() * TAU
 	swiat.add_child(mesh)

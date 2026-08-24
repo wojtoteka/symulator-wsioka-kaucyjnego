@@ -132,6 +132,26 @@ static func wariant(kolor: Color, sila := 0.07) -> Color:
 	wynik.a = kolor.a
 	return wynik
 
+## ZIMOWA WERSJA KOLORU - przyprószony śniegiem i wyprany z nasycenia.
+##
+## Same zaspy na trawniku nie robią zimy: sąsiadująca z nimi jaskrawa zieleń
+## natychmiast krzyczy "to jest lato z białymi plamami". Dopiero przytłumienie
+## całej palety sprawia, że biel wygląda jak śnieg, a nie jak dziura w teksturze.
+##
+## Funkcja jest CZYSTA (nie pyta sama o pogodę), bo używają jej i teren,
+## i zieleń - a te budują się w różnych momentach i decyzję "czy zima"
+## podejmuje wołający.
+static func zimowo(kolor: Color, sila := 0.5) -> Color:
+	var wynik := Color.from_hsv(
+		kolor.h,
+		clampf(kolor.s * (1.0 - sila * 0.75), 0.0, 1.0),
+		clampf(lerpf(kolor.v, 0.93, sila * 0.55), 0.05, 1.0),
+	)
+	# Odrobina błękitu - śnieg w cieniu nigdy nie jest neutralnie biały
+	wynik = wynik.lerp(Color(0.86, 0.90, 0.96), sila * 0.35)
+	wynik.a = kolor.a
+	return wynik
+
 ## Materiał terenu z PROCEDURALNYM SZUMEM (trawa, asfalt, chodnik, beton).
 ## To jest największa różnica między "makietą z papieru" a widokiem osiedla:
 ## jednolita zielona płyta 120x120 zdradza, że to jedno wielkie pudło. Plamy

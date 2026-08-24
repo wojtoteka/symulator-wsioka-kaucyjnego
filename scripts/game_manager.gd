@@ -22,6 +22,7 @@ signal skup_zmiana(otwarty: bool)                    # skup złomu otwarty/zamkn
 signal zlecenie_changed(dane: Dictionary)            # aktywne zlecenie z tablicy ogłoszeń
 signal tryb_wsioka_changed(aktywny: bool, pozostalo: float)   # Wsiokometr 100%
 signal rywal_changed(kwota: float, sztuk: int)       # licznik Heńka obok Twojego
+signal magnes_changed(sekundy: float, maks: float)   # bateria magnesu na butelki
 
 # --- Ustawienia rundy (wartości w scripts/balans.gd) ---
 const CZAS_RUNDY := Balans.CZAS_RUNDY
@@ -61,7 +62,14 @@ var tryb_wsioka := 0.0
 ## "slonecznie" / "pochmurno" / "deszcz". Nie jest to filtr na ekranie:
 ## deszcz zmienia liczbę przechodniów, przyczepność pojazdów i to, gdzie
 ## ludzie zostawiają butelki.
+## "slonecznie" / "pochmurno" / "deszcz" / "snieg" (zima, od dnia ZIMA_OD_DNIA).
 var pogoda := "slonecznie"
+
+## BATERIA MAGNESU - sekundy realnej pracy, jakie zostały na dziś.
+## Zużywa się tylko wtedy, gdy magnes faktycznie coś ciągnie; doładowuje się
+## przy butelkomacie. Patrz zuzyj_magnes() i doladuj_magnes().
+var magnes_bateria := Balans.MAGNES_BATERIA
+var _magnes_ostrzezony := false
 
 # --- RYWALIZACJA Z HEŃKIEM ---
 ## Heniek zawsze polował na te same butelki, tylko nikt tego nie liczył.
@@ -202,6 +210,16 @@ func _ready() -> void:
 		w_menu = false
 	if OS.get_cmdline_user_args().has("--krotki-dzien"):
 		czas = 8.0
+	# Wymuszenie zimy: śnieg losuje się dopiero od dnia ZIMA_OD_DNIA, a czekanie
+	# dwóch tygodni kariery, żeby obejrzeć jedną pogodę, to nie jest narzędzie.
+	# Ustawiamy PRZED budową świata, więc teren i zieleń też wchodzą w bieli.
+	if OS.get_cmdline_user_args().has("--snieg"):
+		dzien = maxi(dzien, Balans.ZIMA_OD_DNIA)
+		pogoda = "snieg"
+		# Przeskok dnia zmienia też dzień tygodnia, a od niego zależą cel
+		# i kurs skupu - bez przeliczenia zostałyby z poprzedniego dnia
+		_losuj_cel_dnia()
+		_losuj_kurs_zlomu()
 	# Tryb autotestów: `--autostart --testy` sprawdza logikę i kończy grę
 	if OS.get_cmdline_user_args().has("--testy"):
 		w_menu = false
@@ -246,6 +264,56 @@ func ma_ochroniarza() -> bool:
 func ma_przyczepe() -> bool:
 	return int(ulepszenia.get("przyczepa", 0)) > 0
 
+# --- BATERIA MAGNESU ---
+# Magnes bez ograniczeń robił z celu dnia formalność. Bateria nie odbiera mu
+# mocy - odbiera ciągłość: masz kilkadziesiąt sekund PRACY na dzień i sam
+# decydujesz, kiedy je wydać. Doładowanie leży przy butelkomacie, czyli tam,
+# gdzie i tak musisz dojść, więc pętla dnia się domyka zamiast rozjeżdżać.
+
+## Czy magnes ma jeszcze prąd (samo posiadanie ulepszenia nie wystarczy).
+func magnes_dziala() -> bool:
+	return ma_magnes() and magnes_bateria > 0.0
+
+## Zużycie baterii za sekundę realnego przyciągania. Wołane przez gracza
+## TYLKO wtedy, gdy magnes faktycznie coś ciągnie - zwykłe chodzenie po pustym
+## trawniku nie ma prawa kosztować prądu.
+func zuzyj_magnes(delta: float) -> void:
+	if magnes_bateria <= 0.0:
+		return
+	magnes_bateria = maxf(magnes_bateria - delta, 0.0)
+	magnes_changed.emit(magnes_bateria, Balans.MAGNES_BATERIA)
+	if magnes_bateria <= 0.0:
+		Osiagniecia.przyznaj("bateria")
+		Sfx.graj("blad", -8.0)
+		pokaz_komunikat("Magnes padł. Bateria z bazaru trzyma tyle, ile kosztowała - oddaj butelki, to się doładuje.")
+	elif not _magnes_ostrzezony and magnes_bateria <= Balans.MAGNES_OSTRZEZENIE:
+		_magnes_ostrzezony = true
+		pokaz_komunikat("Magnes słabnie - zostało %d s. Butelkomat ładuje." % int(ceilf(magnes_bateria)))
+
+## Punkty oddania odwiedzone dzisiaj - do osiągnięcia "Objazd osiedla"
+## i do tego, żeby krążenie między automatami miało ślad w grze.
+var punkty_dnia: Array[String] = []
+
+## Butelkomat melduje udaną transakcję. Trzy różne punkty jednego dnia to
+## dokładnie ta gra, o którą chodzi przy zmęczeniu automatów.
+func zanotuj_punkt(nazwa: String) -> void:
+	if punkty_dnia.has(nazwa):
+		return
+	punkty_dnia.append(nazwa)
+	if punkty_dnia.size() >= 3:
+		Osiagniecia.przyznaj("objazd")
+
+## Doładowanie przy butelkomacie (jedna transakcja = jedno ładowanie).
+func doladuj_magnes() -> void:
+	if not ma_magnes():
+		return
+	var przed := magnes_bateria
+	magnes_bateria = minf(magnes_bateria + Balans.MAGNES_LADOWANIE, Balans.MAGNES_BATERIA)
+	if magnes_bateria > przed:
+		_magnes_ostrzezony = magnes_bateria <= Balans.MAGNES_OSTRZEZENIE
+		magnes_changed.emit(magnes_bateria, Balans.MAGNES_BATERIA)
+		pokaz_komunikat("Magnes doładowany z gniazdka butelkomatu (%d s). Nikt nie widział." % int(magnes_bateria))
+
 # =============================================================================
 #  DZIEŃ TYGODNIA
 # =============================================================================
@@ -263,6 +331,10 @@ func nazwa_dnia_tygodnia() -> String:
 
 ## Jednozdaniowy opis, czym dziś różni się osiedle - HUD i intro go pokazują.
 func opis_dnia() -> String:
+	# Śnieg przebija dzień tygodnia: zamieć jest ważniejszą informacją niż to,
+	# że Zdzisiek ma promocję na akumulatory.
+	if snieg():
+		return "Zima na osiedlu - sypie, ślisko, a butelki leżą pod wiatami."
 	match dzien_tygodnia():
 		Balans.PONIEDZIALEK:
 			return "Poniedziałek - skup płaci marnie, ale i osiedle mniej wymaga."
@@ -296,40 +368,62 @@ func _losuj_pogode() -> void:
 		deszczowo *= 0.5
 	elif dzien_tygodnia() == Balans.PONIEDZIALEK:
 		deszczowo *= 1.5
+	# ZIMA: od pewnego dnia kariery to, co spadłoby jako deszcz, spada jako
+	# śnieg - i dochodzi własna szansa na śnieżycę przy skądinąd suchym dniu.
+	if zima():
+		deszczowo += Balans.SZANSA_SNIEGU
 	if los < deszczowo:
-		pogoda = "deszcz"
+		pogoda = "snieg" if zima() else "deszcz"
 	elif los < deszczowo + Balans.SZANSA_POCHMURNO:
 		pogoda = "pochmurno"
 	else:
 		pogoda = "slonecznie"
 
+## Czy kariera dobrnęła już do zimy (patrz Balans.ZIMA_OD_DNIA).
+func zima() -> bool:
+	return dzien >= Balans.ZIMA_OD_DNIA
+
 func deszcz() -> bool:
 	return pogoda == "deszcz"
+
+func snieg() -> bool:
+	return pogoda == "snieg"
+
+## Deszcz i śnieg różnią się obrazem i tym, jak bardzo się ślizga - ale dla
+## reszty świata (przechodnie w domach, łup pod wiatami) znaczą to samo.
+## Jedna funkcja zamiast dwóch warunków w każdym miejscu.
+func mokro() -> bool:
+	return deszcz() or snieg()
 
 ## 0.0 = czyste niebo, 1.0 = pełne zachmurzenie. PoraDnia miesza po tym
 ## całą scenę: światło, kolory nieba, mgłę i nasycenie.
 func zachmurzenie() -> float:
 	match pogoda:
 		"deszcz": return 1.0
+		"snieg": return 0.85   # śnieżyca jest jasna, mimo że nieba nie widać
 		"pochmurno": return 0.45
 		_: return 0.0
 
 func opis_pogody() -> String:
 	match pogoda:
 		"deszcz": return "leje jak z cebra"
+		"snieg": return "sypie śniegiem"
 		"pochmurno": return "szaro i buro"
 		_: return "słonecznie"
 
-## Mnożnik przyczepności pojazdów - na mokrym asfalcie wózek pływa.
+## Mnożnik przyczepności pojazdów - na mokrym wózek pływa, na śniegu jedzie bokiem.
 func mnoznik_przyczepnosci() -> float:
+	if snieg(): return Balans.SNIEG_PRZYCZEPNOSC
 	return Balans.DESZCZ_PRZYCZEPNOSC if deszcz() else 1.0
 
-## Mnożnik hamowania na piechotę - w deszczu dłużej się wytraca prędkość.
+## Mnożnik hamowania na piechotę - w deszczu i na śniegu dłużej się wytraca prędkość.
 func mnoznik_hamowania() -> float:
+	if snieg(): return Balans.SNIEG_HAMOWANIE
 	return Balans.DESZCZ_HAMOWANIE if deszcz() else 1.0
 
 ## Mnożnik przyspieszania na piechotę - na mokrym adidasy buksują.
 func mnoznik_przyspieszenia() -> float:
+	if snieg(): return Balans.SNIEG_PRZYSPIESZENIE
 	return Balans.DESZCZ_PRZYSPIESZENIE if deszcz() else 1.0
 
 # =============================================================================
@@ -596,10 +690,14 @@ func _process(delta: float) -> void:
 			_zakoncz_tryb_wsioka()
 		else:
 			tryb_wsioka_changed.emit(true, tryb_wsioka)
-	# Wsiokometr spada przy dłuższej bezczynności (w TRYBIE WSIOKA stoi -
-	# szał trwa swoje piętnaście sekund niezależnie od tego, co robisz)
-	elif _czas_bezczynnosci > 3.0 and wsiokometr > 0.0:
-		wsiokometr = maxf(wsiokometr - Balans.WSIOKOMETR_SPADEK * delta, 0.0)
+	# Wsiokometr ucieka CAŁY CZAS, a przy staniu w miejscu ucieka szybciej.
+	# (W TRYBIE WSIOKA stoi - szał trwa swoje piętnaście sekund niezależnie
+	# od tego, co robisz.)
+	elif wsiokometr > 0.0:
+		var spadek := Balans.WSIOKOMETR_SPADEK_STALY
+		if _czas_bezczynnosci > 3.0:
+			spadek = Balans.WSIOKOMETR_SPADEK
+		wsiokometr = maxf(wsiokometr - spadek * delta, 0.0)
 		wsiokometr_changed.emit(wsiokometr)
 	if wsiokometr < 60.0:
 		_legenda_ogloszona = false   # można zostać legendą ponownie
@@ -761,7 +859,13 @@ func dodaj_przedmiot_bez_combo(nazwa: String, kaucja: float, kat := "kaucja") ->
 ## sekund podwójnej kaucji. A skoro po nich pasek spada, to i powód, żeby nie
 ## stać w miejscu.
 func dodaj_wsiokometr(ile: float) -> void:
-	wsiokometr = clampf(wsiokometr + ile * mnoznik_prestizu(), 0.0, 100.0)
+	var przyrost := ile * mnoznik_prestizu()
+	# OPÓR KOŃCÓWKI: powyżej progu każdy punkt jest wart mniej. Bez tego pasek
+	# dojeżdżał do stu sam z siebie i tryb odpalał się przy okazji - a ma być
+	# czymś, po co się sięga.
+	if wsiokometr >= Balans.WSIOKOMETR_OPOR_OD:
+		przyrost *= Balans.WSIOKOMETR_OPOR
+	wsiokometr = clampf(wsiokometr + przyrost, 0.0, 100.0)
 	wsiokometr_changed.emit(wsiokometr)
 	if wsiokometr >= 100.0 and not _legenda_ogloszona:
 		_legenda_ogloszona = true
@@ -870,6 +974,7 @@ func koniec_dnia() -> void:
 		"wyzwanie_ok": wyzwanie.get("zrobione", false),
 		"dzien_tygodnia": nazwa_dnia_tygodnia(),
 		"pogoda": opis_pogody(),
+		"zima": zima(),
 		"rywal_kasa": konkurent_kasa,
 		"rywal_sztuk": konkurent_sztuk,
 		"rywal_wygrany": wygrana_z_rywalem,
@@ -884,6 +989,8 @@ func _sprawdz_osiagniecia_konca_dnia(cel_ok: bool) -> void:
 		Osiagniecia.przyznaj("dzien_bez_piwa")
 	if cel_ok and deszcz():
 		Osiagniecia.przyznaj("deszcz")
+	if cel_ok and snieg():
+		Osiagniecia.przyznaj("snieg")
 	if cel_ok and dzien_tygodnia() == Balans.SOBOTA:
 		Osiagniecia.przyznaj("sobota")
 	Osiagniecia.sprawdz_prog("dzien_kariery", dzien)
@@ -929,6 +1036,9 @@ func nowy_dzien() -> void:
 	tryb_wsioka = 0.0
 	konkurent_kasa = 0.0
 	konkurent_sztuk = 0
+	magnes_bateria = Balans.MAGNES_BATERIA   # noc na ładowarce
+	_magnes_ostrzezony = false
+	punkty_dnia.clear()
 	_czas_bezczynnosci = 0.0
 	_legenda_ogloszona = false
 	statystyki = {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0, "piwa": 0}

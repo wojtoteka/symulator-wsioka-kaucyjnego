@@ -78,6 +78,15 @@ func _biedronka() -> void:
 	# Drzwi wejściowe (ciemne szkło)
 	pudlo(Vector3(-2, 1.5, -27.9), Vector3(3, 3, 0.2), Color(0.15, 0.2, 0.25), false)
 	pudlo(Vector3(2, 1.5, -27.9), Vector3(3, 3, 0.2), Color(0.15, 0.2, 0.25), false)
+	# PODCIEŃ nad wejściem - blaszany daszek na dwóch słupkach, ciągnący się
+	# nad drzwiami i butelkomatem. To nie dekoracja: Plan.DACHY liczy tę strefę
+	# jako zadaszoną, więc w deszczu chowa się tu łup, a szum deszczu przechodzi
+	# w bębnienie o blachę (patrz scripts/pogoda.gd).
+	var podcien := pudlo(Vector3(1.5, 3.3, -26.9), Vector3(14.0, 0.14, 3.0),
+		Color(0.5, 0.16, 0.18), false, false, Styl.metal(Color(0.5, 0.16, 0.18)))
+	podcien.rotation.z = 0.03
+	for x in [-5.0, 8.0]:
+		walec(Vector3(x, 1.63, -25.5), 0.08, 3.26, Paleta.METAL, false, false, true)
 	# Butelkomat przy wejściu - flagowy punkt osiedla
 	var automat := Butelkomat.new()
 	automat.nazwa_punktu = "przy Biedronce"

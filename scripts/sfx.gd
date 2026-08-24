@@ -22,6 +22,7 @@ const KLASYK_CZAS := 15.0   # ile sekund klasyka leci, zanim się wyciszy
 var _klasyk: AudioStreamPlayer
 var _klasyki: Array[AudioStream] = []
 var _petla_deszczu: AudioStreamWAV = null   # generowana leniwie
+var _petla_dachu: AudioStreamWAV = null     # bębnienie deszczu o blachę wiaty
 
 # --- SYNTETYCZNY KLASYK (fallback, gdy nie ma plików w music/) ---
 const KLASYK_BPM := 132.0
@@ -299,6 +300,47 @@ func petla_deszczu() -> AudioStreamWAV:
 	wav.loop_begin = 0
 	wav.loop_end = n
 	_petla_deszczu = wav
+	return wav
+
+## BĘBNIENIE DESZCZU O BLACHĘ - pętla puszczana pod wiatami.
+##
+## Deszcz na otwartym to szum; deszcz na blaszanym daszku to POJEDYNCZE
+## uderzenia z krótkim dzwonieniem metalu. Dlatego nie da się tego zrobić
+## przez samo podbicie basu na szumie: potrzebne są transjenty. Sypiemy
+## kilkaset losowych stuknięć na cztery sekundy, każde z własną wysokością.
+func petla_dachu() -> AudioStreamWAV:
+	if _petla_dachu != null:
+		return _petla_dachu
+	var n := 4 * CZESTOTLIWOSC_PROBKOWANIA
+	var probki := PackedFloat32Array()
+	probki.resize(n)
+	# Podkład: bardzo przytłumiony szum, żeby między stuknięciami nie było
+	# martwej ciszy (na daszku zawsze coś kapie)
+	var poprzednia := 0.0
+	for i in n:
+		poprzednia = lerpf(poprzednia, randf_range(-1.0, 1.0), 0.12)
+		probki[i] = poprzednia * 0.1
+	# Stuknięcia: tłumione sinusoidy o częstotliwości blachy (1-3 kHz)
+	for i in 520:
+		var start := randi() % n
+		var f := randf_range(950.0, 3100.0)
+		var glosnosc := randf_range(0.12, 0.4)
+		var dlugosc := int(0.02 * CZESTOTLIWOSC_PROBKOWANIA)
+		for j in dlugosc:
+			var indeks := start + j
+			if indeks >= n:
+				break
+			var t := float(j) / dlugosc
+			probki[indeks] += sin(TAU * f * float(j) / CZESTOTLIWOSC_PROBKOWANIA) 				* glosnosc * pow(1.0 - t, 3.0)
+	# Wygładzenie na złączeniu pętli - bez tego strzela co cztery sekundy
+	for i in n:
+		var t := float(i) / n
+		probki[i] = clampf(probki[i] * minf(minf(t, 1.0 - t) * 40.0, 1.0), -1.0, 1.0)
+	var wav := _wav(probki)
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = n
+	_petla_dachu = wav
 	return wav
 
 ## Dokłada fragment do miksu w podanym punkcie czasu (sekundy).

@@ -457,25 +457,35 @@ func _physics_process(delta: float) -> void:
 ##
 ## Świadomie NIE ciągniemy niczego, gdy plecak jest pełny: fanty krążące
 ## wokół gracza, których nie da się podnieść, wyglądałyby jak usterka.
+##
+## BATERIA: magnes bez ograniczeń robił z celu dnia formalność - wystarczyło
+## przebiec trawnik. Teraz ma zasilanie na kilkadziesiąt sekund PRACY, przy
+## czym prąd schodzi TYLKO wtedy, gdy magnes faktycznie coś ciągnie. Bieganie
+## po pustym osiedlu z włączonym magnesem nie kosztuje nic - i tak ma być,
+## bo inaczej gracz musiałby pilnować czegoś, na co nie ma wpływu.
 func _magnes(delta: float) -> void:
-	if not Game.ma_magnes() or lezy or _cwiczy or siedzi:
+	if not Game.magnes_dziala() or lezy or _cwiczy or siedzi:
 		return
 	var srodek := global_position + Vector3(0, 0.35, 0)
+	var ciagnal := false
 	for fant in get_tree().get_nodes_in_group("kolekcjonerskie"):
 		if Game.zajete_miejsca() >= Game.pojemnosc_plecaka():
-			return   # dobiliśmy do limitu w trakcie zbierania
+			break   # dobiliśmy do limitu w trakcie zbierania
 		if not is_instance_valid(fant):
 			continue
 		var do_gracza: Vector3 = srodek - fant.global_position
 		var dystans := do_gracza.length()
 		if dystans > Balans.MAGNES_ZASIEG:
 			continue
+		ciagnal = true
 		if dystans < Balans.MAGNES_ZLAPANIE:
 			fant.interakcja(self)
 			continue
 		# Im bliżej, tym szybciej - fant "wpada", zamiast leniwie dryfować
 		var tempo: float = 1.5 + Balans.MAGNES_SILA * (1.0 - dystans / Balans.MAGNES_ZASIEG)
 		fant.global_position += do_gracza.normalized() * tempo * delta
+	if ciagnal:
+		Game.zuzyj_magnes(delta)
 
 ## Screen shake: kamera drży z malejącą siłą (sygnał Game.wstrzas).
 func _efekt_wstrzasu(delta: float) -> void:

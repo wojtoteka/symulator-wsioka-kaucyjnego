@@ -40,6 +40,12 @@ var _sepia: ColorRect          # filtr TRYBU WSIOKA (mnożenie kolorów)
 var _ety_tryb: Label           # wielki licznik "TRYB WSIOKA 12 s"
 var _ety_rywal: Label          # tablica wyników: Ty vs Heniek
 var _wiersz_czasu: HBoxContainer   # zegar u góry (chowany po dzwonku)
+var _wiersz_magnesu: HBoxContainer # bateria magnesu (tylko gdy jest ulepszenie)
+var _ety_magnes: Label
+var _pasek_magnesu: ColorRect
+var _panel_ksiegi: Control         # KSIĘGA WSIOKA - pełna lista osiągnięć
+var _lista_ksiegi: VBoxContainer
+var _ety_ksiega_licznik: Label
 var _sepia_cel := Color.WHITE  # docelowy kolor filtru (żeby nie mnożyć tweenów)
 
 const SZEROKOSC_PASKA := 170.0
@@ -66,6 +72,7 @@ func _ready() -> void:
 	Game.zlecenie_changed.connect(_aktualizuj_zlecenie)
 	Game.tryb_wsioka_changed.connect(_aktualizuj_tryb_wsioka)
 	Game.rywal_changed.connect(_aktualizuj_rywala)
+	Game.magnes_changed.connect(_aktualizuj_magnes)
 	# Stan wyzwania na starcie sceny
 	if not Game.wyzwanie.is_empty():
 		_aktualizuj_wyzwanie(
@@ -92,9 +99,15 @@ func _input(zdarzenie: InputEvent) -> void:
 	# Po końcu dnia R zaczyna nowy dzień (z płynnym przejściem)
 	if not Game.gra_trwa and not Game.w_menu and zdarzenie.is_action_pressed("restart"):
 		_nowy_dzien_z_przejsciem()
-	# Esc - pauza (tylko w trakcie gry)
+	# Esc - pauza (tylko w trakcie gry). Gdy otwarta jest Księga albo ustawienia,
+	# Esc cofa o jeden ekran, zamiast od razu wracać do gry.
 	if zdarzenie.is_action_pressed("ui_cancel") and Game.gra_trwa and not Game.w_menu:
-		_przelacz_pauze()
+		if _panel_ksiegi != null and _panel_ksiegi.visible:
+			_panel_ksiegi.visible = false
+		elif _panel_ustawien != null and _panel_ustawien.visible:
+			_panel_ustawien.visible = false
+		else:
+			_przelacz_pauze()
 	# F11 - pełny ekran
 	var klawisz := zdarzenie as InputEventKey
 	if klawisz and klawisz.pressed and klawisz.keycode == KEY_F11:
@@ -138,6 +151,17 @@ func _ikona(rodzaj: String, rozmiar := 22) -> TextureRect:
 		"papieros":
 			img.fill_rect(Rect2i(1, 7, 12, 3), Color(0.95, 0.95, 0.9))
 			img.fill_rect(Rect2i(13, 7, 2, 3), Color(1.0, 0.5, 0.15))   # żar
+		"magnes":
+			# Podkowa: dwa ramiona i łuk, końcówki w czerwieni i błękicie
+			img.fill_rect(Rect2i(3, 4, 3, 8), Color(0.55, 0.6, 0.68))
+			img.fill_rect(Rect2i(10, 4, 3, 8), Color(0.55, 0.6, 0.68))
+			img.fill_rect(Rect2i(3, 2, 10, 3), Color(0.55, 0.6, 0.68))
+			img.fill_rect(Rect2i(3, 12, 3, 2), Color(0.85, 0.2, 0.2))
+			img.fill_rect(Rect2i(10, 12, 3, 2), Color(0.3, 0.5, 0.9))
+		"ksiega":
+			img.fill_rect(Rect2i(2, 2, 12, 12), Color(0.45, 0.25, 0.12))  # okładka
+			img.fill_rect(Rect2i(4, 4, 8, 8), Color(0.92, 0.88, 0.76))    # kartki
+			img.fill_rect(Rect2i(7, 2, 2, 12), Color(0.32, 0.17, 0.08))   # grzbiet
 	var tr := TextureRect.new()
 	tr.texture = ImageTexture.create_from_image(img)
 	tr.custom_minimum_size = Vector2(rozmiar, rozmiar)
@@ -263,6 +287,16 @@ func _zbuduj() -> void:
 	_ety_papieros = _etykieta("Papieros", 16, Color(0.95, 0.95, 0.9))
 	lewy.add_child(_wiersz("papieros", _ety_papieros))
 	_pasek_papierosa = _pasek(lewy, Color(0.95, 0.95, 0.9))
+	# BATERIA MAGNESU - widoczna tylko wtedy, gdy gracz ma to ulepszenie.
+	# Zasób, którego nie widać, nie jest zasobem, tylko niespodzianką: bez
+	# tego paska "magnes padł" czytałoby się jak usterka gry.
+	_ety_magnes = _etykieta("Magnes", 16, Color(0.6, 0.85, 1.0))
+	_wiersz_magnesu = _wiersz("magnes", _ety_magnes)
+	lewy.add_child(_wiersz_magnesu)
+	_pasek_magnesu = _pasek(lewy, Color(0.45, 0.8, 1.0))
+	_wiersz_magnesu.visible = Game.ma_magnes()
+	_pasek_magnesu.get_parent().visible = Game.ma_magnes()
+	_aktualizuj_magnes(Game.magnes_bateria, Balans.MAGNES_BATERIA)
 
 	# Lewa krawędź, pod panelem głównym: AKTYWNE ZLECENIE (ukryte, gdy brak)
 	_panel_zlecenia = PanelContainer.new()
@@ -373,6 +407,7 @@ func _zbuduj() -> void:
 	_zbuduj_menu()
 	_zbuduj_pauze()
 	_zbuduj_ustawienia()
+	_zbuduj_ksiege()
 
 	# Czarna zasłona do przejść - bezpośrednio w CanvasLayer, NAD całym UI
 	_zaslona = ColorRect.new()
@@ -447,6 +482,7 @@ func _zbuduj_pauze() -> void:
 	naglowek.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	kolumna.add_child(naglowek)
 	kolumna.add_child(_przycisk("WZNÓW (Esc)", _przelacz_pauze))
+	kolumna.add_child(_przycisk("KSIĘGA WSIOKA", _pokaz_ksiege))
 	kolumna.add_child(_przycisk("NOWY DZIEŃ", _nowy_dzien_z_przejsciem))
 	kolumna.add_child(_przycisk("USTAWIENIA", _pokaz_ustawienia))
 	kolumna.add_child(_przycisk("PEŁNY EKRAN (F11)", _przelacz_pelny_ekran))
@@ -510,6 +546,108 @@ func _zbuduj_ustawienia() -> void:
 func _pokaz_ustawienia() -> void:
 	_panel_ustawien.visible = true
 
+## KSIĘGA WSIOKA - pełna lista osiągnięć z postępem.
+##
+## Dotąd osiągnięcia dało się tylko ZDOBYĆ: leciał toast, na koniec dnia
+## pojawiała się linijka "Księga wsioka 12/30" i tyle. Nie było gdzie ich
+## obejrzeć, więc nie było też po co ich gonić - a to właśnie widok listy
+## z "62/100 śmietników" robi z osiągnięć powód, żeby zagrać jeszcze raz.
+##
+## Panel budujemy RAZ i chowamy: przy trzydziestu wierszach przebudowa przy
+## każdym otwarciu byłaby widocznym zacięciem w trakcie pauzy.
+func _zbuduj_ksiege() -> void:
+	_panel_ksiegi = Control.new()
+	_panel_ksiegi.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel_ksiegi.visible = false
+	_korzen.add_child(_panel_ksiegi)
+	var tlo := ColorRect.new()
+	# Kryjące tło, nie półprzezroczysta nakładka jak w ustawieniach: to jest
+	# ekran DO CZYTANIA trzydziestu wierszy, a prześwitujący przez nie HUD
+	# i osiedle robią z listy szum
+	tlo.color = Color(0.04, 0.06, 0.09, 0.99)
+	tlo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel_ksiegi.add_child(tlo)
+	var kolumna := VBoxContainer.new()
+	kolumna.set_anchors_preset(Control.PRESET_FULL_RECT)
+	kolumna.add_theme_constant_override("separation", 6)
+	kolumna.offset_left = 40
+	kolumna.offset_right = -40
+	kolumna.offset_top = 18
+	kolumna.offset_bottom = -18
+	_panel_ksiegi.add_child(kolumna)
+	var naglowek := _etykieta("KSIĘGA WSIOKA", 30, Paleta.UI_ZLOTY)
+	naglowek.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kolumna.add_child(naglowek)
+	_ety_ksiega_licznik = _etykieta("", 18, Color(0.85, 0.85, 0.8))
+	_ety_ksiega_licznik.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kolumna.add_child(_ety_ksiega_licznik)
+	# Lista w przewijaku - trzydzieści wpisów nie zmieści się na 720p
+	var przewijak := ScrollContainer.new()
+	przewijak.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	przewijak.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	kolumna.add_child(przewijak)
+	_lista_ksiegi = VBoxContainer.new()
+	_lista_ksiegi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lista_ksiegi.add_theme_constant_override("separation", 2)
+	przewijak.add_child(_lista_ksiegi)
+	kolumna.add_child(_przycisk("WRÓĆ", func() -> void: _panel_ksiegi.visible = false))
+	_odswiez_ksiege()
+
+## Jeden wiersz Księgi: nazwa, opis i postęp. Zdobyte świecą na złoto,
+## niezdobyte są przygaszone - ale WIDOCZNE, bo lista ukrytych celów nie
+## motywuje nikogo.
+func _wiersz_ksiegi(wpis: Dictionary) -> PanelContainer:
+	var id := str(wpis["id"])
+	var zdobyte := Osiagniecia.czy_zdobyte(id)
+	var ramka := PanelContainer.new()
+	var tlo_wiersza := _stylbox(
+		Color(0.22, 0.17, 0.05, 0.85) if zdobyte else Color(0.09, 0.11, 0.14, 0.7), 8)
+	# Ciaśniej niż domyślny stylbox: przy trzydziestu wierszach każde dwa
+	# piksele marginesu to jeden wpis mniej na ekranie
+	tlo_wiersza.content_margin_top = 3
+	tlo_wiersza.content_margin_bottom = 3
+	ramka.add_theme_stylebox_override("panel", tlo_wiersza)
+	var wiersz := HBoxContainer.new()
+	wiersz.add_theme_constant_override("separation", 10)
+	ramka.add_child(wiersz)
+	wiersz.add_child(_ikona("ksiega" if zdobyte else "butelka", 20))
+	var tekst := VBoxContainer.new()
+	tekst.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tekst.add_theme_constant_override("separation", 0)
+	wiersz.add_child(tekst)
+	var nazwa := _etykieta(str(wpis["nazwa"]), 17,
+		Paleta.UI_ZLOTY if zdobyte else Color(0.62, 0.64, 0.68))
+	tekst.add_child(nazwa)
+	tekst.add_child(_etykieta(str(wpis["opis"]), 13,
+		Color(0.88, 0.86, 0.8) if zdobyte else Color(0.5, 0.52, 0.56)))
+	# Postęp mają tylko wpisy progowe - zdarzeniowe dostają ptaszka albo myślnik
+	var postep := Osiagniecia.opis_postepu(id)
+	if postep == "":
+		postep = "✔" if zdobyte else "-"
+	var ety_postep := _etykieta(postep, 17,
+		Paleta.UI_ZIELONY if zdobyte else Color(0.6, 0.62, 0.66))
+	ety_postep.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ety_postep.custom_minimum_size = Vector2(90, 0)
+	wiersz.add_child(ety_postep)
+	return ramka
+
+## Otwarcie Księgi - przebudowujemy tylko treść wierszy, nie cały panel.
+func _pokaz_ksiege() -> void:
+	_odswiez_ksiege()
+	_panel_ksiegi.visible = true
+
+func _odswiez_ksiege() -> void:
+	_ety_ksiega_licznik.text = "Zdobyte: %d z %d" % [
+		Osiagniecia.ile_zdobytych(), Osiagniecia.ile_wszystkich(),
+	]
+	for dziecko in _lista_ksiegi.get_children():
+		# remove_child, a nie samo queue_free: kasowanie jest odroczone do końca
+		# klatki, więc lista przez moment miałaby dwa komplety wpisów
+		_lista_ksiegi.remove_child(dziecko)
+		dziecko.queue_free()
+	for wpis in Osiagniecia.LISTA:
+		_lista_ksiegi.add_child(_wiersz_ksiegi(wpis))
+
 # --- Akcje menu ---
 
 func _start_gry() -> void:
@@ -563,6 +701,12 @@ func _przelacz_pauze() -> void:
 	var pauza := not get_tree().paused
 	get_tree().paused = pauza
 	_panel_pauzy.visible = pauza
+	if not pauza:
+		# Wracamy do gry - podekrany pauzy nie mogą zostać na wierzchu
+		if _panel_ksiegi != null:
+			_panel_ksiegi.visible = false
+		if _panel_ustawien != null:
+			_panel_ustawien.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if pauza else Input.MOUSE_MODE_CAPTURED
 
 func _przelacz_pelny_ekran() -> void:
@@ -677,6 +821,25 @@ func _aktualizuj_rywala(kwota: float, sztuk: int) -> void:
 	]
 	_ety_rywal.add_theme_color_override("font_color",
 		Paleta.UI_ZIELONY if przewaga >= 0.0 else Paleta.UI_CZERWONY)
+
+## BATERIA MAGNESU. Pasek pojawia się dopiero po kupieniu ulepszenia - wcześniej
+## byłby pustym wierszem, który nic nie znaczy.
+func _aktualizuj_magnes(sekundy: float, maks: float) -> void:
+	if _pasek_magnesu == null:
+		return
+	var ma := Game.ma_magnes()
+	_wiersz_magnesu.visible = ma
+	_pasek_magnesu.get_parent().visible = ma
+	if not ma:
+		return
+	var udzial := 0.0 if maks <= 0.0 else clampf(sekundy / maks, 0.0, 1.0)
+	_pasek_magnesu.size.x = (SZEROKOSC_PASKA - 4) * udzial
+	_ety_magnes.text = "Magnes: %d s" % int(ceilf(sekundy))
+	# Czerwień na resztkach, błękit przy pełnej - jeden rzut oka wystarczy
+	var na_resztkach := sekundy <= Balans.MAGNES_OSTRZEZENIE
+	var kolor := Paleta.UI_CZERWONY if na_resztkach else Color(0.45, 0.8, 1.0)
+	_pasek_magnesu.color = kolor
+	_ety_magnes.add_theme_color_override("font_color", kolor)
 
 ## Combo: napis rośnie i puchnie z każdym poziomem.
 func _aktualizuj_combo(poziom: int, mnoznik: int) -> void:

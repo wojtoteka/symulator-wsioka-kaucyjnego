@@ -41,6 +41,11 @@ const PORY: Array = [
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(KATALOG)
+	# MAGNES włączamy na sztywno, ZANIM zbuduje się HUD: pasek baterii pokazuje
+	# się tylko posiadaczom ulepszenia, więc bez tego nie dałoby się sprawdzić,
+	# czy w ogóle mieści się w panelu. Zapis kariery jest w trybie narzędziowym
+	# zablokowany, więc graczowi nic z tego nie zostaje.
+	Game.ulepszenia["magnes"] = 1
 	await get_tree().process_frame
 	var gracz: Node3D = null
 	var gracze := get_tree().get_nodes_in_group("gracz")
@@ -69,6 +74,13 @@ func _ready() -> void:
 	# MUSI być przed kreskami pędu: te wyłączają sobie _process i zostają
 	# na ekranie już do końca przebiegu.
 	await _przeglad_por_dnia(gracz)
+	# ZIMA. Gdy przebieg wystartował z "--snieg", całe osiedle JEST już zimowe
+	# (łącznie z paletą terenu i zieleni, bo te budują się raz) - wtedy robimy
+	# zwykłe ujęcie. Bez flagi zostaje podmiana w locie: nieba i opadu tak,
+	# ale trawnik pozostanie zielony.
+	await _zrzut_zimy(gracz)
+	# KSIĘGA WSIOKA - sprawdzamy, czy trzydzieści wpisów mieści się na 720p
+	await _zrzut_ksiegi()
 	# Osobne ujęcie z wymuszonymi kreskami pędu (bez tego gracz musiałby jechać)
 	_wymus_motion_lines()
 	await get_tree().create_timer(0.3).timeout
@@ -108,6 +120,48 @@ func _przeglad_por_dnia(gracz: Node3D) -> void:
 		get_viewport().get_texture().get_image().save_png(sciezka)
 		print("ZRZUT: %s (postęp dnia %.0f%%)" % [pora["nazwa"], float(pora["postep"]) * 100.0])
 	Game.czas = Balans.CZAS_RUNDY
+
+## ZIMA NA ŻĄDANIE. Pogoda jest losowana raz na dzień, a śnieg wchodzi dopiero
+## od dnia ZIMA_OD_DNIA - czekanie na niego w trybie zrzutów nie ma sensu.
+## Przestawiamy zmienną i dokładamy ŚWIEŻY węzeł Pogody: ten w scenie zbudował
+## już swoje kałuże i nie zamieni ich w zaspy.
+func _zrzut_zimy(gracz: Node3D) -> void:
+	if not Game.snieg():
+		Game.dzien = maxi(Game.dzien, Balans.ZIMA_OD_DNIA)
+		Game.pogoda = "snieg"
+		get_tree().current_scene.add_child(load("res://scripts/pogoda.gd").new())
+	gracz.global_position = UJECIE_PORY["gdzie"]
+	gracz.rotation.y = deg_to_rad(float(UJECIE_PORY["obrot"]))
+	gracz.velocity = Vector3.ZERO
+	# PoraDnia dochodzi do bieli płynnie (move_toward co 0,1 s) - dajemy jej czas
+	await get_tree().create_timer(2.6).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/19_zima.png" % KATALOG)
+	print("ZRZUT: 19_zima")
+
+## Ekran Księgi wsioka. Panel żyje w HUD-zie, więc szukamy go po skrypcie -
+## HUD nie jest w żadnej grupie, a dokładanie jej tylko dla zrzutów byłoby
+## dokładaniem stanu do gry na potrzeby narzędzia.
+func _zrzut_ksiegi() -> void:
+	var hud := _znajdz_hud()
+	if hud == null:
+		printerr("ZRZUT: nie znalazłem HUD-u - pomijam Księgę")
+		return
+	hud.call("_pokaz_ksiege")
+	await get_tree().create_timer(0.5).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/20_ksiega.png" % KATALOG)
+	print("ZRZUT: 20_ksiega")
+	# Chowamy panel, żeby nie został na kolejnych ujęciach
+	var panel: Variant = hud.get("_panel_ksiegi")
+	if panel != null:
+		panel.visible = false
+
+func _znajdz_hud() -> Node:
+	for wezel in get_tree().root.find_children("*", "CanvasLayer", true, false):
+		if wezel.get_script() != null and str(wezel.get_script().resource_path).ends_with("hud.gd"):
+			return wezel
+	return null
 
 ## Średni FPS z kilku sekund stania w najgęstszym miejscu mapy.
 func _zmierz_plynnosc() -> void:

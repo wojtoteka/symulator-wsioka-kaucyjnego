@@ -1,13 +1,19 @@
 extends CharacterBody3D
 ## KONKURENT-WSIOK "HENIEK" - chodzi po mapie do najbliższych butelek
 ## i je zabiera. Wymusza pośpiech! Na szczęście jest wolniejszy od gracza
-## i lubi sobie odpocząć. Złotych fantów "nie poznaje" - zostawia je.
+## i lubi sobie odpocząć - przynajmniej przez pierwsze dni kariery.
 ##
 ## Od teraz Heniek nie tylko chodzi: KAŻDA zwinięta butelka ma wartość,
 ## która ląduje na jego liczniku (Game.konkurent_kasa). Licznik widać obok
 ## Twojej kasy przez cały dzień, a na koniec jest rozliczenie "Ty 84 zł /
 ## Heniek 71 zł" i osobna premia za wygraną. Rywal, którego widać na
 ## tablicy wyników, jest dużo groźniejszy niż rywal, który po prostu chodzi.
+##
+## ...ale rywal, którego NIE DA SIĘ przegrać, to nadal nie rywal, tylko dodatek
+## do wypłaty - a tak było: odpoczywał 4-7 s po każdej butelce i przez pięć
+## minut robił kilkanaście złotych przy osiemdziesięciu gracza. Dlatego teraz
+## odpoczywa krócej, z każdym dniem kariery nabiera wprawy, a od czwartego dnia
+## POZNAJE SIĘ NA ZŁOCIE - czyli poluje dokładnie na to, na co ty.
 
 const Kolekcjonerski := preload("res://scripts/collectible.gd")
 
@@ -34,6 +40,10 @@ var _zbiera := false
 func _ready() -> void:
 	add_to_group("bijalne")   # można mu przywalić (F) - czasem oddaje
 	predkosc = Balans.PREDKOSC_HENKA + minf(0.15 * (Game.dzien - 1), 1.2)
+	# Ogłaszamy, że Heniek zmienił zasady gry - inaczej gracz zauważy dopiero
+	# na ekranie podsumowania, że tym razem przegrał, i nie będzie wiedział czemu
+	if _poluje_na_zloto():
+		Game.pokaz_komunikat("Heniek nauczył się rozpoznawać ZŁOTE fanty. Koniec taryfy ulgowej.")
 	_zbuduj_postac()
 	# Kolizja
 	var kolizja := CollisionShape3D.new()
@@ -136,14 +146,20 @@ func _physics_process(delta: float) -> void:
 	else:
 		_czas_w_miejscu = 0.0
 
-## Najbliższa butelka na mapie (złote ignoruje - "nie poznał się na złocie").
+## Czy Heniek poznaje się już na złocie (patrz Balans.HENIEK_ZLOTO_OD_DNIA).
+func _poluje_na_zloto() -> bool:
+	return Game.dzien >= Balans.HENIEK_ZLOTO_OD_DNIA
+
+## Najbliższa butelka na mapie. Przez pierwsze dni złote fanty ignoruje
+## ("nie poznał się na złocie") - potem już nie.
 func _znajdz_cel() -> Node3D:
 	var najlepszy: Node3D = null
 	var najmniejszy_dystans := INF
+	var zloto := _poluje_na_zloto()
 	for obiekt in get_tree().get_nodes_in_group("kolekcjonerskie"):
 		if not is_instance_valid(obiekt):
 			continue
-		if Kolekcjonerski.czy_zloty(obiekt.typ):
+		if not zloto and Kolekcjonerski.czy_zloty(obiekt.typ):
 			continue
 		var d: float = global_position.distance_to(obiekt.global_position)
 		if d < najmniejszy_dystans:
@@ -175,7 +191,15 @@ func _zakoncz_zbieranie() -> void:
 					TEKSTY_KRADZIEZY.pick_random(), Game.zl(Game.konkurent_kasa),
 				])
 	_cel = null
-	_odpoczynek = randf_range(4.0, 7.0)   # Heniek celebruje sukces
+	_odpoczynek = _dlugosc_odpoczynku()   # Heniek celebruje sukces (coraz krócej)
+
+## Ile Heniek odpoczywa po butelce. Z każdym dniem kariery krócej - trenuje
+## po godzinach - ale nie schodzi poniżej HENIEK_WPRAWA_MAKS bazowego czasu,
+## bo rywal biegający bez przerwy przestaje być zabawny i robi się karą.
+func _dlugosc_odpoczynku() -> float:
+	var wprawa := 1.0 - minf(
+		Balans.HENIEK_WPRAWA_ZA_DZIEN * (Game.dzien - 1), Balans.HENIEK_WPRAWA_MAKS)
+	return randf_range(Balans.HENIEK_ODPOCZYNEK_MIN, Balans.HENIEK_ODPOCZYNEK_MAX) * wprawa
 
 ## Tabliczka nad głową Heńka: jego utarg i to, kto aktualnie prowadzi.
 func _odswiez_licznik(kwota: float, _sztuk: int) -> void:
