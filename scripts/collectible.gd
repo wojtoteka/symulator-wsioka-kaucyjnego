@@ -41,6 +41,14 @@ var _zebrane := false   # blokada podwójnego zebrania (gracz vs konkurent)
 static func czy_zloty(t: Typ) -> bool:
 	return t == Typ.ZLOTA or t == Typ.ZLOTA_PUSZKA
 
+## Ile ten fant jest dziś wart w złotówkach - BEZ combo i trybu wsioka,
+## czyli sama cena z cennika plus promocje dnia (czwartek = akumulatory).
+## Pyta o to Heniek, żeby wiedzieć, ile ci właśnie zwinął.
+func wartosc() -> float:
+	return float(DANE[typ]["kaucja"]) * (
+		Game.mnoznik_akumulatora() if typ == Typ.AKUMULATOR else 1.0
+	)
+
 ## Losowanie typu z wagami (progi w scripts/balans.gd).
 ## "szczescie" > 1.0 (Czapka szczęścia) zwiększa szansę na złote fanty.
 static func losowy_typ(szczescie := 1.0) -> Typ:
@@ -152,9 +160,11 @@ func _zbuduj_bryle() -> void:
 func podpowiedz() -> String:
 	if kategoria(typ) == "zlom":
 		var slot := miejsca(typ)
-		return "E - podnieś: %s (skup: %s%s)" % [
-			DANE[typ]["nazwa"], Game.zl(DANE[typ]["kaucja"]),
-			", %d miejsca" % slot if slot > 1 else "",
+		var promocja := "" if is_equal_approx(wartosc(), float(DANE[typ]["kaucja"])) \
+			else " PROMOCJA!"
+		return "E - podnieś: %s (skup: %s%s%s)" % [
+			DANE[typ]["nazwa"], Game.zl(wartosc()),
+			", %d miejsca" % slot if slot > 1 else "", promocja,
 		]
 	return "E - podnieś: %s (+%s)" % [DANE[typ]["nazwa"], Game.zl(DANE[typ]["kaucja"])]
 
@@ -165,6 +175,8 @@ func interakcja(_gracz: Node3D) -> void:
 	var dane: Dictionary = DANE[typ].duplicate()
 	dane["kategoria"] = kategoria(typ)
 	dane["miejsca"] = miejsca(typ)
+	# Cena z uwzględnieniem promocji dnia (czwartek = akumulatory u Zdziśka)
+	dane["kaucja"] = wartosc()
 	# Złote fanty mocniej pompują Wsiokometr
 	var wynik: Dictionary = Game.podnies_przedmiot(
 		dane, Balans.WSIOKOMETR_ZLOTO if czy_zloty(typ) else Balans.WSIOKOMETR_BUTELKA
@@ -193,6 +205,7 @@ func interakcja(_gracz: Node3D) -> void:
 		Game.postep_wyzwania("zlote")
 	if typ == Typ.ZLOTA_PUSZKA:
 		Game.statystyki["zlote"] += 1
+		Osiagniecia.przyznaj("zlota_puszka")
 		Sfx.graj("zlota", 2.0, 1.3)
 		Sfx.odpal_klasyk()   # taki fart zasługuje na KLASYKA
 		Game.pokaz_komunikat("ZŁOTA PUSZKA! +%s! Taki fart raz na miesiąc!" % Game.zl(wynik["kaucja"]))

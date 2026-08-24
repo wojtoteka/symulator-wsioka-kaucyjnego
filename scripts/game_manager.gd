@@ -20,6 +20,8 @@ signal upojenie(pijanstwo: float, kac: float)        # 0-1: nakładka koloru na 
 signal wyzwanie_changed(opis: String, postep: int, cel: int, zrobione: bool)
 signal skup_zmiana(otwarty: bool)                    # skup złomu otwarty/zamknięty
 signal zlecenie_changed(dane: Dictionary)            # aktywne zlecenie z tablicy ogłoszeń
+signal tryb_wsioka_changed(aktywny: bool, pozostalo: float)   # Wsiokometr 100%
+signal rywal_changed(kwota: float, sztuk: int)       # licznik Heńka obok Twojego
 
 # --- Ustawienia rundy (wartości w scripts/balans.gd) ---
 const CZAS_RUNDY := Balans.CZAS_RUNDY
@@ -40,7 +42,7 @@ var cel_dnia := Balans.CEL_BAZOWY   # losowany co dzień, patrz _losuj_cel_dnia(
 var cel_osiagniety := false
 var _zarobek_z_lotow := 0.0         # ile już wypłacono za akrobacje (limit dzienny)
 var _ostatni_platny_lot := -99.0
-var statystyki := {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0}
+var statystyki := {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0, "piwa": 0}
 
 # --- Combo ---
 var combo := 0                   # ile przedmiotów pod rząd
@@ -50,6 +52,23 @@ var _combo_odliczanie := 0.0
 var wsiokometr := 0.0
 var _czas_bezczynnosci := 0.0
 var _legenda_ogloszona := false
+
+## TRYB WSIOKA - ile sekund jeszcze trwa szał (0.0 = nie trwa).
+## Odpala się sam przy Wsiokometrze 100%, patrz dodaj_wsiokometr().
+var tryb_wsioka := 0.0
+
+# --- POGODA (losowana raz na dzień) ---
+## "slonecznie" / "pochmurno" / "deszcz". Nie jest to filtr na ekranie:
+## deszcz zmienia liczbę przechodniów, przyczepność pojazdów i to, gdzie
+## ludzie zostawiają butelki.
+var pogoda := "slonecznie"
+
+# --- RYWALIZACJA Z HEŃKIEM ---
+## Heniek zawsze polował na te same butelki, tylko nikt tego nie liczył.
+## Teraz jego łup ma wartość, widać ją obok Twojej kasy, a na koniec dnia
+## jest rozliczenie i osobna premia za wygraną.
+var konkurent_kasa := 0.0
+var konkurent_sztuk := 0
 
 ## Dzienny kurs skupu złomu - codziennie inny, jak na prawdziwej giełdzie
 ## (a przynajmniej jak Zdzisiek twierdzi). Mnożnik ceny złomu.
@@ -67,7 +86,13 @@ var czulosc := 1.0             # mnożnik czułości myszy
 # --- KARIERA (utrzymuje się między dniami i między uruchomieniami gry) ---
 var dzien := 1
 var bank := 0.0                # odłożona kaucja z poprzednich dni - waluta ulepszeń
-var ulepszenia := {"plecak": 0, "adidasy": 0, "czapka": 0, "pluca": 0, "kluczyki": 0, "dres": 0}
+var ulepszenia := {
+	"plecak": 0, "adidasy": 0, "czapka": 0, "pluca": 0, "kluczyki": 0, "dres": 0,
+	"magnes": 0, "ochroniarz": 0, "przyczepa": 0,
+}
+## Sześć pierwszych ulepszeń podnosi LICZBY (+% do czegoś). Trzy ostatnie
+## odblokowują CZASOWNIK - rzecz, której wcześniej w ogóle nie dało się zrobić.
+## Dlatego są droższe i dlatego warto ich mieć więcej niż procentów.
 const ULEPSZENIA_INFO := {
 	"plecak": {"nazwa": "Większy plecak", "opis": "+5 miejsc za poziom", "ceny": [30.0, 60.0, 120.0]},
 	"adidasy": {"nazwa": "Adidasy z bazaru", "opis": "+10% szybkości za poziom", "ceny": [40.0, 100.0]},
@@ -75,6 +100,9 @@ const ULEPSZENIA_INFO := {
 	"pluca": {"nazwa": "Mocne płuca", "opis": "Sprint pali 25% mniej za poziom", "ceny": [30.0, 70.0]},
 	"kluczyki": {"nazwa": "Kluczyki do skutera", "opis": "Odpalisz Rometa przy garażach", "ceny": [90.0]},
 	"dres": {"nazwa": "ZŁOTY DRES", "opis": "Prestiż +50%. Osiedle klęka", "ceny": [150.0]},
+	"magnes": {"nazwa": "MAGNES NA BUTELKI", "opis": "Fanty z 3 m same wpadają do plecaka", "ceny": [120.0]},
+	"ochroniarz": {"nazwa": "Znajomość z ochroniarzem", "opis": "Straż ostrzega zamiast mandatu", "ceny": [110.0]},
+	"przyczepa": {"nazwa": "Przyczepka do skutera", "opis": "Skuter zbiera fanty w biegu", "ceny": [140.0]},
 }
 
 # --- WYZWANIE DNIA (losowane codziennie, nagroda w zł) ---
@@ -165,6 +193,7 @@ func _ready() -> void:
 	_wczytaj_ustawienia()
 	_wczytaj_kariere()
 	_losuj_wyzwanie()
+	_losuj_pogode()          # też PO karierze - pogoda zależy od dnia tygodnia
 	_losuj_cel_dnia()        # musi być PO wczytaniu kariery - cel zależy od dnia
 	_losuj_kurs_zlomu()
 	# Tryb deweloperski: `godot -- --autostart` pomija menu główne,
@@ -205,6 +234,151 @@ func mnoznik_prestizu() -> float:
 func ma_kluczyki() -> bool:
 	return int(ulepszenia.get("kluczyki", 0)) > 0
 
+## MAGNES NA BUTELKI - fanty w promieniu kilku metrów same lecą do plecaka.
+func ma_magnes() -> bool:
+	return int(ulepszenia.get("magnes", 0)) > 0
+
+## ZNAJOMOŚĆ Z OCHRONIARZEM - straż ostrzega, zamiast wypisywać mandat.
+func ma_ochroniarza() -> bool:
+	return int(ulepszenia.get("ochroniarz", 0)) > 0
+
+## PRZYCZEPKA DO SKUTERA - Romet zbiera fanty w biegu, jak wózek.
+func ma_przyczepe() -> bool:
+	return int(ulepszenia.get("przyczepa", 0)) > 0
+
+# =============================================================================
+#  DZIEŃ TYGODNIA
+# =============================================================================
+# Dzień kariery był dotąd tylko licznikiem do wzoru na cel. Teraz dzień 1 to
+# poniedziałek, dzień 8 znowu poniedziałek - i każdy dzień ma osobowość:
+# w sobotę pod blokami leży pokłosie imprezy, w poniedziałek skup płaci marnie,
+# w czwartek Zdzisiek robi promocję na akumulatory.
+
+## 0 = poniedziałek ... 6 = niedziela.
+func dzien_tygodnia() -> int:
+	return (dzien - 1) % Balans.DNI_TYGODNIA.size()
+
+func nazwa_dnia_tygodnia() -> String:
+	return Balans.DNI_TYGODNIA[dzien_tygodnia()]
+
+## Jednozdaniowy opis, czym dziś różni się osiedle - HUD i intro go pokazują.
+func opis_dnia() -> String:
+	match dzien_tygodnia():
+		Balans.PONIEDZIALEK:
+			return "Poniedziałek - skup płaci marnie, ale i osiedle mniej wymaga."
+		Balans.CZWARTEK:
+			return "Czwartek - Zdzisiek ma PROMOCJĘ na akumulatory!"
+		Balans.SOBOTA:
+			return "Sobota - po piątkowej imprezie pod blokami leży wszystko."
+		Balans.NIEDZIELA:
+			return "Niedziela - osiedle śpi, poprzeczka niżej."
+		_:
+			return "Zwykły dzień na osiedlu. Kaucja sama się nie uzbiera."
+
+## Ile razy więcej fantów rozrzucić po mapie (sobota = po imprezie).
+func mnoznik_fantow() -> float:
+	return Balans.SOBOTA_FANTY if dzien_tygodnia() == Balans.SOBOTA else 1.0
+
+## Bonus do wartości akumulatora (czwartkowa promocja Zdziśka).
+func mnoznik_akumulatora() -> float:
+	return Balans.CZWARTEK_AKUMULATOR if dzien_tygodnia() == Balans.CZWARTEK else 1.0
+
+# =============================================================================
+#  POGODA
+# =============================================================================
+
+## Pogoda na dziś. W sobotę częściej świeci (bo tak trzeba), w poniedziałek
+## częściej leje (bo tak jest).
+func _losuj_pogode() -> void:
+	var los := randf()
+	var deszczowo := Balans.SZANSA_DESZCZU
+	if dzien_tygodnia() == Balans.SOBOTA:
+		deszczowo *= 0.5
+	elif dzien_tygodnia() == Balans.PONIEDZIALEK:
+		deszczowo *= 1.5
+	if los < deszczowo:
+		pogoda = "deszcz"
+	elif los < deszczowo + Balans.SZANSA_POCHMURNO:
+		pogoda = "pochmurno"
+	else:
+		pogoda = "slonecznie"
+
+func deszcz() -> bool:
+	return pogoda == "deszcz"
+
+## 0.0 = czyste niebo, 1.0 = pełne zachmurzenie. PoraDnia miesza po tym
+## całą scenę: światło, kolory nieba, mgłę i nasycenie.
+func zachmurzenie() -> float:
+	match pogoda:
+		"deszcz": return 1.0
+		"pochmurno": return 0.45
+		_: return 0.0
+
+func opis_pogody() -> String:
+	match pogoda:
+		"deszcz": return "leje jak z cebra"
+		"pochmurno": return "szaro i buro"
+		_: return "słonecznie"
+
+## Mnożnik przyczepności pojazdów - na mokrym asfalcie wózek pływa.
+func mnoznik_przyczepnosci() -> float:
+	return Balans.DESZCZ_PRZYCZEPNOSC if deszcz() else 1.0
+
+## Mnożnik hamowania na piechotę - w deszczu dłużej się wytraca prędkość.
+func mnoznik_hamowania() -> float:
+	return Balans.DESZCZ_HAMOWANIE if deszcz() else 1.0
+
+## Mnożnik przyspieszania na piechotę - na mokrym adidasy buksują.
+func mnoznik_przyspieszenia() -> float:
+	return Balans.DESZCZ_PRZYSPIESZENIE if deszcz() else 1.0
+
+# =============================================================================
+#  TRYB WSIOKA
+# =============================================================================
+
+func tryb_wsioka_aktywny() -> bool:
+	return tryb_wsioka > 0.0
+
+## Mnożnik kaucji przy podnoszeniu. Poza TRYBEM WSIOKA to zwykłe 1.0.
+func mnoznik_kaucji() -> float:
+	return Balans.TRYB_WSIOKA_MNOZNIK if tryb_wsioka_aktywny() else 1.0
+
+## Odpalenie szału. Wołane z dodaj_wsiokometr() po dobiciu do 100%.
+func odpal_tryb_wsioka() -> void:
+	if tryb_wsioka_aktywny():
+		return
+	tryb_wsioka = Balans.TRYB_WSIOKA_CZAS
+	tryb_wsioka_changed.emit(true, tryb_wsioka)
+	Sfx.odpal_klasyk()   # legenda osiedla ma swój hymn
+	wstrzasnij(0.45)
+	meme.emit("TRYB WSIOKA! PODWÓJNA KAUCJA!")
+	pokaz_komunikat("WSIOKOMETR 100%%! Przez %d s wszystko warte podwójnie. LEĆ!" % int(Balans.TRYB_WSIOKA_CZAS))
+	Osiagniecia.przyznaj("tryb_wsioka")
+
+## Koniec szału - Wsiokometr spada, więc trzeba wyrobić go od nowa.
+func _zakoncz_tryb_wsioka() -> void:
+	tryb_wsioka = 0.0
+	wsiokometr = minf(wsiokometr, Balans.TRYB_WSIOKA_PO)
+	_legenda_ogloszona = false
+	wsiokometr_changed.emit(wsiokometr)
+	tryb_wsioka_changed.emit(false, 0.0)
+	Sfx.graj("koniec", -6.0)
+	pokaz_komunikat("Tryb wsioka wygasł. Kaucja znowu w normalnej cenie.")
+
+# =============================================================================
+#  RYWALIZACJA Z HEŃKIEM
+# =============================================================================
+
+## Heniek zgłasza swój łup - wołane z konkurent.gd po każdej zwiniętej butelce.
+func konkurent_zebral(wartosc: float) -> void:
+	konkurent_kasa += wartosc
+	konkurent_sztuk += 1
+	rywal_changed.emit(konkurent_kasa, konkurent_sztuk)
+
+## O ile złotych prowadzisz nad Heńkiem (ujemne = przegrywasz).
+func przewaga_nad_konkurentem() -> float:
+	return kasa - konkurent_kasa
+
 ## Cena następnego poziomu ulepszenia; -1 gdy maks.
 func cena_ulepszenia(id: String) -> float:
 	var poziom: int = ulepszenia[id]
@@ -218,14 +392,27 @@ func kup_ulepszenie(id: String) -> bool:
 		return false
 	bank -= cena
 	ulepszenia[id] += 1
+	if id == "dres":
+		Osiagniecia.przyznaj("zloty_dres")
 	zapisz_kariere()
 	return true
 
 ## Kurs skupu na dziś. Zdzisiek ogłasza go rano i nie podlega negocjacji.
+## W poniedziałek po weekendzie płaci wyraźnie gorzej - hurtownia zamknięta,
+## a Zdzisiek "musi z czegoś żyć".
 func _losuj_kurs_zlomu() -> void:
 	kurs_zlomu = randf_range(Balans.SKUP_MNOZNIK_MIN, Balans.SKUP_MNOZNIK_MAX)
+	if dzien_tygodnia() == Balans.PONIEDZIALEK:
+		kurs_zlomu *= Balans.PONIEDZIALEK_KURS
 	skup_otwarty = true
 	_ostrzezenie_skupu = false
+
+## Widełki, w jakich MOŻE dziś wylądować kurs (z uwzględnieniem poniedziałku).
+## Wydzielone, bo pilnuje ich test [6] - a sam mnożnik dnia tygodnia potrafi
+## zejść poniżej SKUP_MNOZNIK_MIN i test bez tego wywalałby się co siódmy dzień.
+func widelki_kursu() -> Array:
+	var mnoznik := Balans.PONIEDZIALEK_KURS if dzien_tygodnia() == Balans.PONIEDZIALEK else 1.0
+	return [Balans.SKUP_MNOZNIK_MIN * mnoznik, Balans.SKUP_MNOZNIK_MAX * mnoznik]
 
 ## Opis kursu do dymków Zdziśka i HUD-u.
 func opis_kursu() -> String:
@@ -242,6 +429,10 @@ func opis_kursu() -> String:
 ## Zaokrąglamy do pełnych piątek - "Cel: 87,43 zł" czytałoby się jak błąd.
 func _losuj_cel_dnia() -> void:
 	var baza := Balans.CEL_BAZOWY + Balans.CEL_ZA_DZIEN * (dzien - 1)
+	# Dzień tygodnia przesuwa poprzeczkę: w sobotę pod blokami leży dwa razy
+	# tyle szkła, więc cel musi być wyższy, żeby dzień nadal był dniem pracy.
+	# W poniedziałek i niedzielę odwrotnie - osiedle odpuszcza.
+	baza *= mnoznik_celu_dnia()
 	var wahanie := randf_range(1.0 - Balans.CEL_WAHANIE, 1.0 + Balans.CEL_WAHANIE)
 	cel_dnia = maxf(
 		Balans.CEL_ZAOKRAGLENIE,
@@ -249,6 +440,16 @@ func _losuj_cel_dnia() -> void:
 	)
 	_zarobek_z_lotow = 0.0
 	_ostatni_platny_lot = -99.0
+
+## Ile razy wyższy (albo niższy) jest dziś cel przez sam dzień tygodnia.
+## Osobna funkcja, bo pyta o nią też test [11] - inaczej "widełki wokół bazy"
+## wywalałyby się w każdą sobotę.
+func mnoznik_celu_dnia() -> float:
+	match dzien_tygodnia():
+		Balans.SOBOTA: return Balans.SOBOTA_CEL
+		Balans.PONIEDZIALEK: return Balans.PONIEDZIALEK_CEL
+		Balans.NIEDZIELA: return Balans.NIEDZIELA_CEL
+		_: return 1.0
 
 ## Premia za wykonanie OBU zadań dnia i kara za odpuszczenie któregokolwiek.
 func premia_dnia() -> float:
@@ -314,6 +515,10 @@ func zapisz_kariere() -> void:
 	if tryb_narzedziowy:
 		return
 	var cfg := ConfigFile.new()
+	# Wczytujemy PRZED zapisem, bo w tym samym pliku mieszkają osiągnięcia
+	# (scripts/osiagniecia.gd pisze własną sekcję). Bez tego każdy zapis
+	# kariery kasowałby "Księgę wsioka".
+	cfg.load(SCIEZKA_KARIERY)
 	cfg.set_value("kariera", "dzien", dzien)
 	cfg.set_value("kariera", "bank", bank)
 	for id in ulepszenia:
@@ -384,9 +589,17 @@ func _process(delta: float) -> void:
 		if _combo_odliczanie <= 0.0:
 			combo = 0
 			combo_changed.emit(0, 1)
-	# Wsiokometr spada przy dłuższej bezczynności
-	if _czas_bezczynnosci > 3.0 and wsiokometr > 0.0:
-		wsiokometr = maxf(wsiokometr - 4.0 * delta, 0.0)
+	# TRYB WSIOKA odlicza się niezależnie od wszystkiego innego
+	if tryb_wsioka > 0.0:
+		tryb_wsioka -= delta
+		if tryb_wsioka <= 0.0:
+			_zakoncz_tryb_wsioka()
+		else:
+			tryb_wsioka_changed.emit(true, tryb_wsioka)
+	# Wsiokometr spada przy dłuższej bezczynności (w TRYBIE WSIOKA stoi -
+	# szał trwa swoje piętnaście sekund niezależnie od tego, co robisz)
+	elif _czas_bezczynnosci > 3.0 and wsiokometr > 0.0:
+		wsiokometr = maxf(wsiokometr - Balans.WSIOKOMETR_SPADEK * delta, 0.0)
 		wsiokometr_changed.emit(wsiokometr)
 	if wsiokometr < 60.0:
 		_legenda_ogloszona = false   # można zostać legendą ponownie
@@ -445,18 +658,23 @@ func podnies_przedmiot(dane: Dictionary, bonus_wsiokometru := 4.0) -> Dictionary
 	_combo_odliczanie = COMBO_OKNO
 	var mnoznik: int = mini(combo, MAKS_MNOZNIK)
 	statystyki["combo_max"] = maxi(statystyki["combo_max"], mnoznik)
-	var kaucja: float = dane["kaucja"] * mnoznik
+	# Combo mnoży kaucję, a TRYB WSIOKA mnoży jeszcze raz na wierzchu -
+	# stąd przy pełnym Wsiokometrze i combo x4 pojedyncza puszka potrafi
+	# być warta cztery złote
+	var kaucja: float = dane["kaucja"] * mnoznik * mnoznik_kaucji()
 	plecak.append({
 		"nazwa": dane["nazwa"], "kaucja": kaucja,
 		"kategoria": dane.get("kategoria", "kaucja"), "miejsca": slotow,
 	})
 	statystyki["zebrane"] += 1
+	Osiagniecia.zglos("zebrane")
 	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
 	combo_changed.emit(combo, mnoznik)
 	dodaj_wsiokometr(bonus_wsiokometru)
 	if mnoznik >= MAKS_MNOZNIK:
 		wstrzasnij(0.12)   # maksymalne combo lekko trzęsie ekranem
 		postep_wyzwania("combo")
+		Osiagniecia.przyznaj("combo_krol")
 	return {"ok": true, "kaucja": kaucja, "combo": combo, "mnoznik": mnoznik}
 
 ## Zerowanie combo (potrącenie przez auto, gleba z pojazdu).
@@ -501,10 +719,18 @@ func _sprawdz_cel_dnia() -> void:
 
 ## Mandat od Straży Miejskiej. Płacisz ile masz - reszta "w systemie".
 func zaplac_mandat(kwota: float, powod: String) -> void:
+	# ZNAJOMOŚĆ Z OCHRONIARZEM (ulepszenie): strażnik zna cię z widzenia,
+	# więc kończy się na pogadance. To jest właśnie ulepszenie odblokowujące
+	# czasownik: nie "mandat o 20% mniejszy", tylko "grzebiesz bez stresu".
+	if ma_ochroniarza():
+		Sfx.graj("blad", -12.0)
+		pokaz_komunikat("Strażnik: \"Panie, ja pana znam. Tym razem tylko upominam - %s.\"" % powod)
+		return
 	var zaplacono := minf(kwota, kasa)
 	kasa -= zaplacono
 	money_changed.emit(kasa)
 	statystyki["mandaty"] += 1
+	Osiagniecia.zglos("mandaty")
 	Sfx.graj("blad")
 	if zaplacono < kwota:
 		pokaz_komunikat("MANDAT za %s: %s. Nie masz tyle - reszta 'w systemie'." % [powod, zl(kwota)])
@@ -528,15 +754,19 @@ func dodaj_przedmiot_bez_combo(nazwa: String, kaucja: float, kat := "kaucja") ->
 	backpack_changed.emit(zajete_miejsca(), pojemnosc_plecaka())
 	return true
 
-## Wsiokometr rośnie (zbieranie, grzebanie). Przy 100 - LEGENDA OSIEDLA.
+## Wsiokometr rośnie (zbieranie, grzebanie). Przy 100 odpala się TRYB WSIOKA.
+##
+## Wcześniej pełny pasek dawał tylko fanfarę i napis "legenda osiedla" -
+## czyli dokładnie nic. Teraz jest nagroda, po którą warto biegać: kilkanaście
+## sekund podwójnej kaucji. A skoro po nich pasek spada, to i powód, żeby nie
+## stać w miejscu.
 func dodaj_wsiokometr(ile: float) -> void:
 	wsiokometr = clampf(wsiokometr + ile * mnoznik_prestizu(), 0.0, 100.0)
 	wsiokometr_changed.emit(wsiokometr)
 	if wsiokometr >= 100.0 and not _legenda_ogloszona:
 		_legenda_ogloszona = true
-		Sfx.odpal_klasyk()   # legenda osiedla ma swój hymn
-		wstrzasnij(0.3)
-		pokaz_komunikat("WSIOKOMETR 100% - JESTEŚ LEGENDĄ OSIEDLA!")
+		Osiagniecia.przyznaj("legenda")
+		odpal_tryb_wsioka()
 
 ## Oddanie zawartości plecaka z danej kategorii ("kaucja" - butelkomat,
 ## "zlom" - skup). Reszta zostaje w plecaku. Zwraca {"ile", "kwota"}.
@@ -558,6 +788,9 @@ func oddaj_kategorie(kat: String, mnoznik_ceny := 1.0) -> Dictionary:
 	money_changed.emit(kasa)
 	if kat == "zlom":
 		statystyki["oddany_zlom"] += ile
+		Osiagniecia.zglos("zlom_oddany", ile)
+	else:
+		Osiagniecia.zglos("butelki_oddane", ile)
 	_sprawdz_cel_dnia()
 	return {"ile": ile, "kwota": kwota}
 
@@ -599,6 +832,15 @@ func koniec_dnia() -> void:
 		# Kara nie może wpędzić w minus - osiedle jest surowe, ale nie okrutne
 		kara = minf(kara_dnia(), bank)
 		bank -= kara
+	# POJEDYNEK Z HEŃKIEM rozliczany osobno od celu dnia: można przegrać
+	# z osiedlem, a i tak wygrać z konkurencją (albo odwrotnie).
+	var wygrana_z_rywalem := kasa > konkurent_kasa
+	var premia_rywal := 0.0
+	if wygrana_z_rywalem:
+		premia_rywal = Balans.PREMIA_ZA_HENIEKA
+		bank += premia_rywal
+		Osiagniecia.przyznaj("rywal")
+	_sprawdz_osiagniecia_konca_dnia(cel_ok)
 	zapisz_kariere()
 	round_ended.emit({
 		"cel_kwota": cel_dnia,
@@ -626,7 +868,33 @@ func koniec_dnia() -> void:
 		"bank": bank,
 		"wyzwanie_opis": opis_wyzwania(),
 		"wyzwanie_ok": wyzwanie.get("zrobione", false),
+		"dzien_tygodnia": nazwa_dnia_tygodnia(),
+		"pogoda": opis_pogody(),
+		"rywal_kasa": konkurent_kasa,
+		"rywal_sztuk": konkurent_sztuk,
+		"rywal_wygrany": wygrana_z_rywalem,
+		"premia_rywal": premia_rywal,
+		"osiagniecia_dzis": Osiagniecia.zdobyte_dzis.duplicate(),
 	})
+
+## Osiągnięcia, które da się ocenić dopiero po dzwonku: dzień bez piwa,
+## progi kariery, stan banku.
+func _sprawdz_osiagniecia_konca_dnia(cel_ok: bool) -> void:
+	if cel_ok and statystyki.get("piwa", 0) == 0:
+		Osiagniecia.przyznaj("dzien_bez_piwa")
+	if cel_ok and deszcz():
+		Osiagniecia.przyznaj("deszcz")
+	if cel_ok and dzien_tygodnia() == Balans.SOBOTA:
+		Osiagniecia.przyznaj("sobota")
+	Osiagniecia.sprawdz_prog("dzien_kariery", dzien)
+	Osiagniecia.sprawdz_prog("bank", bank)
+	var komplet := true
+	for id in ULEPSZENIA_INFO:
+		if int(ulepszenia.get(id, 0)) < int(ULEPSZENIA_INFO[id]["ceny"].size()):
+			komplet = false
+			break
+	if komplet:
+		Osiagniecia.przyznaj("wyposazony")
 
 ## Za co konkretnie osiedle ściąga karę - gracz ma wiedzieć, co odpuścił.
 func _powod_kary(cel_ok: bool, wyzwanie_ok: bool) -> String:
@@ -645,9 +913,11 @@ func nowy_dzien() -> void:
 	dzien += 1               # kariera idzie do przodu (Heniek też, niestety)
 	zapisz_kariere()
 	_losuj_wyzwanie()
+	_losuj_pogode()          # nowy dzień = nowa pogoda (i nowy dzień tygodnia)
 	_losuj_cel_dnia()        # nowy dzień = nowa poprzeczka
 	_losuj_kurs_zlomu()
 	Zlecenia.nowy_dzien()   # nowe kartki na tablicy ogłoszeń
+	Osiagniecia.nowy_dzien()
 	kasa = 0.0
 	plecak.clear()
 	czas = CZAS_RUNDY
@@ -656,9 +926,12 @@ func nowy_dzien() -> void:
 	cel_osiagniety = false
 	combo = 0
 	wsiokometr = 0.0
+	tryb_wsioka = 0.0
+	konkurent_kasa = 0.0
+	konkurent_sztuk = 0
 	_czas_bezczynnosci = 0.0
 	_legenda_ogloszona = false
-	statystyki = {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0}
+	statystyki = {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0, "piwa": 0}
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 

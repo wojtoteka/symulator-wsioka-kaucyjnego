@@ -24,6 +24,57 @@ const PREMIA_BAZOWA := 20.0
 const PREMIA_ZA_DZIEN := 6.0
 const KARA_BAZOWA := 12.0
 const KARA_ZA_DZIEN := 4.0
+# Osobna premia za pobicie Heńka. Rywal, którego widać na tablicy wyników,
+# jest groźniejszy niż rywal, który po prostu chodzi - ale musi mieć stawkę.
+const PREMIA_ZA_HENIEKA := 12.0
+
+# --- DNI TYGODNIA ---
+# Dzień kariery to nie tylko licznik do wzoru na cel: dzień 1 to poniedziałek,
+# dzień 8 znowu poniedziałek. Każdy ma swój charakter, więc tydzień gry ma
+# rytm, a nie siedem takich samych rund.
+const PONIEDZIALEK := 0
+const WTOREK := 1
+const SRODA := 2
+const CZWARTEK := 3
+const PIATEK := 4
+const SOBOTA := 5
+const NIEDZIELA := 6
+const DNI_TYGODNIA: Array[String] = [
+	"poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela",
+]
+const SOBOTA_FANTY := 1.4          # po piątkowej imprezie leży wszędzie więcej
+const SOBOTA_CEL := 1.12           # ...więc i poprzeczka idzie w górę
+const PONIEDZIALEK_KURS := 0.75    # skup po weekendzie płaci marnie
+const PONIEDZIALEK_CEL := 0.9      # w zamian osiedle mniej wymaga
+const CZWARTEK_AKUMULATOR := 1.7   # promocja Zdziśka na akumulatory
+const NIEDZIELA_CEL := 0.92        # niedziela handlowa? nie w tym mieście
+
+# --- POGODA ---
+# Losowana raz na dzień. Deszcz to nie filtr na ekranie: zmienia liczbę
+# przechodniów, przyczepność pojazdów i miejsca, w których leży łup.
+const SZANSA_DESZCZU := 0.22
+const SZANSA_POCHMURNO := 0.28     # reszta przypadków to słońce
+const DESZCZ_PRZYCZEPNOSC := 0.45  # mnożnik przyczepności pojazdów na mokrym
+const DESZCZ_HAMOWANIE := 0.55     # mnożnik hamowania na piechotę (ślizg)
+const DESZCZ_PRZYSPIESZENIE := 0.7 # i wolniejsze nabieranie prędkości
+
+# --- TRYB WSIOKA (Wsiokometr 100%) ---
+# Pasek 0-100 rósł i spadał, i na tym się kończyło. Teraz pełny Wsiokometr
+# odpala kilkanaście sekund szaleństwa: podwójna kaucja, sepia i disco polo
+# na cały regulator. Po wszystkim pasek spada, więc trzeba go wyrobić od nowa.
+const TRYB_WSIOKA_CZAS := 15.0
+const TRYB_WSIOKA_MNOZNIK := 2.0   # podwójna kaucja za wszystko, co podniesiesz
+const TRYB_WSIOKA_PO := 45.0       # do ilu spada Wsiokometr po zakończeniu
+
+# --- KOLEJKA DO BUTELKOMATU ---
+# Automat, który zapycha się w 35% prób, był wąskim gardłem, bo był JEDEN.
+# Przy trzech punktach na mapie kolejka babci przestaje być karą, a staje się
+# pytaniem: stoję osiem sekund czy biegnę czterdzieści metrów dalej?
+const SZANSA_KOLEJKI := 0.4        # że przy automacie ktoś już stoi
+const KOLEJKA_MIN := 6.0
+const KOLEJKA_MAX := 11.0
+const KOLEJKA_PRZERWA_MIN := 22.0  # co ile automat losuje nową babcię
+const KOLEJKA_PRZERWA_MAX := 45.0
 
 # --- Sklepik: na co przepuścić kaucję ---
 const CENA_ENERGETYKA := 5.0
@@ -94,6 +145,13 @@ const PIWA_DO_KACA := 2            # od ilu piw po zejściu przychodzi kac
 const KAC_NA_PIWO := 10.0          # sekundy kaca za każde wypite piwo
 const KARA_KACA := 0.8             # mnożnik prędkości na kacu
 const SZANSA_KOPNIAKA_W_SMIETNIK := 0.5   # że coś wypadnie po ciosie
+
+# --- ULEPSZENIA ODBLOKOWUJĄCE CZASOWNIK ---
+# Sześć pierwszych ulepszeń było liniowe (+% do czegoś). Te trzy zmieniają
+# to, CO gracz może zrobić, a nie o ile lepiej to robi - i dlatego są droższe.
+const MAGNES_ZASIEG := 3.0         # z ilu metrów fanty same lecą do plecaka
+const MAGNES_SILA := 7.0           # jak szybko przyciąga (m/s przy pełnym zasięgu)
+const MAGNES_ZLAPANIE := 0.7       # z tej odległości fant wpada do plecaka
 
 # --- Wózek sklepowy ---
 const WOZEK_MAKS := 11.0

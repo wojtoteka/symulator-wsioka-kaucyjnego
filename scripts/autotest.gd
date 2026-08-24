@@ -5,8 +5,8 @@ extends Node
 ## plecak z kategoriami, wyprzedaż w butelkomacie/skupie, zlecenia z JSON-a.
 ## Wypisują raport i kończą grę kodem wyjścia 0 (sukces) albo 1 (błąd).
 
-## Plan osiedla (JEZDNIE, BUDYNKI, czy_zajete) - patrz scripts/world.gd
-const Swiat := preload("res://scripts/world.gd")
+## Plan osiedla (JEZDNIE, BUDYNKI, czy_zajete) mieszka w scripts/plan_osiedla.gd
+## i jest dostępny globalnie jako "Plan" - stąd brak preloadu.
 const Auto := preload("res://scripts/auto.gd")
 
 var _bledy := 0
@@ -30,6 +30,12 @@ func _ready() -> void:
 	_test_cel_i_rozliczenie()
 	_test_limit_lotow()
 	await _test_ruch_uliczny()
+	_test_dni_tygodnia()
+	_test_pogoda()
+	_test_tryb_wsioka()
+	_test_osiagniecia()
+	_test_rywalizacja()
+	_test_butelkomaty()
 	print("=====================================================")
 	if _bledy == 0:
 		print("WYNIK: wszystkie %d testy przeszły. Kaucja bezpieczna." % _testy)
@@ -46,10 +52,17 @@ func _sprawdz(opis: String, warunek: bool) -> void:
 		_bledy += 1
 		printerr("  [BŁĄD] %s" % opis)
 
+## Czysty stan przed testem kwotowym. Wsiokometr zerujemy CELOWO: kolejne
+## testy podnoszą dziesiątki fantów, pasek dobijał do 100%, odpalał TRYB
+## WSIOKA i od tego momentu każda kwota w teście była podwójna. Test balansu
+## musi liczyć w cenach normalnych.
 func _wyczysc_plecak() -> void:
 	Game.plecak.clear()
 	Game.kasa = 0.0
 	Game.combo = 0
+	Game.wsiokometr = 0.0
+	Game.tryb_wsioka = 0.0
+	Game._legenda_ogloszona = false
 
 # --- Testy ---
 
@@ -128,8 +141,11 @@ func _test_przebieg_zlecenia() -> void:
 
 func _test_kurs_zlomu() -> void:
 	print("\n[6] Skup, butelkomat i widełki balansu")
-	var w_zakresie := Game.kurs_zlomu >= Balans.SKUP_MNOZNIK_MIN and Game.kurs_zlomu <= Balans.SKUP_MNOZNIK_MAX
-	_sprawdz("kurs mieści się w widełkach z balansu", w_zakresie)
+	# Widełki zależą od dnia tygodnia (poniedziałek tnie kurs), więc pytamy
+	# o nie Game - inaczej test wywalałby się co siódmy dzień kariery
+	var widelki: Array = Game.widelki_kursu()
+	var w_zakresie: bool = Game.kurs_zlomu >= float(widelki[0]) - 0.001 and Game.kurs_zlomu <= float(widelki[1]) + 0.001
+	_sprawdz("kurs mieści się w widełkach z balansu (%s)" % Game.nazwa_dnia_tygodnia(), w_zakresie)
 	_sprawdz("opis kursu nie jest pusty", Game.opis_kursu().length() > 0)
 	# Butelkomat ma wnerwiać, ale nie blokować. Zapchanie niczego nie odbiera -
 	# gracz traci kilka sekund i jeden kopniak. Te dwa warunki pilnują, żeby
@@ -141,8 +157,8 @@ func _test_swiat() -> void:
 	print("\n[7] Świat zawiera nowe obiekty")
 	var drzewo := get_tree().root
 	_sprawdz("są auta na obwodnicy", get_tree().get_nodes_in_group("auta").size() > 0)
-	_sprawdz("są cele nawigacji (skup, tablica, skuter)",
-		get_tree().get_nodes_in_group("cel_nawigacji").size() >= 3)
+	_sprawdz("są cele nawigacji (butelkomaty, skup, tablica, skuter)",
+		get_tree().get_nodes_in_group("cel_nawigacji").size() >= 6)
 	_sprawdz("jest patrol straży", get_tree().get_nodes_in_group("straz").size() > 0)
 	var ile_fantow := get_tree().get_nodes_in_group("kolekcjonerskie").size()
 	_sprawdz("na mapie leżą fanty (%d szt.)" % ile_fantow, ile_fantow >= 30)
@@ -195,7 +211,7 @@ func _test_rozmieszczenie() -> void:
 		var winne: Array[String] = []
 		for wezel in get_tree().get_nodes_in_group(grupa):
 			var p: Vector3 = wezel.global_position
-			if Swiat.czy_zajete(p.x, p.z):
+			if Plan.czy_zajete(p.x, p.z):
 				winne.append("(%.0f, %.0f)" % [p.x, p.z])
 		_sprawdz("%s: żaden nie stoi w zajętym miejscu%s" % [
 			grupa, "" if winne.is_empty() else " - winne: " + ", ".join(winne),
@@ -205,20 +221,20 @@ func _test_rozmieszczenie() -> void:
 	# budynku (tak było z Biedronką) albo płotek na asfalcie (tak było
 	# z działkami - wszystkie cztery wchodziły metrem na obwodnicę).
 	var kolidujace: Array[String] = []
-	for pas in Swiat.JEZDNIE:
-		for i in Swiat.BUDYNKI.size():
-			if _nachodza(Swiat.BUDYNKI[i], pas):
+	for pas in Plan.JEZDNIE:
+		for i in Plan.BUDYNKI.size():
+			if _nachodza(Plan.BUDYNKI[i], pas):
 				kolidujace.append("budynek %d" % i)
-		for x in Swiat.DZIALKI_X:
-			if _nachodza(Swiat.obrys_dzialki(x), pas):
+		for x in Plan.DZIALKI_X:
+			if _nachodza(Plan.obrys_dzialki(x), pas):
 				kolidujace.append("działka x=%.1f" % x)
 	_sprawdz("nic nie przenika jezdni%s" % (
 		"" if kolidujace.is_empty() else " - kolizje: " + ", ".join(kolidujace)
 	), kolidujace.is_empty())
 	# Działki nie mogą też wchodzić w budę Zdziśka na końcu alejki
 	var na_skupie: Array[String] = []
-	for x in Swiat.DZIALKI_X:
-		if _nachodza(Swiat.obrys_dzialki(x), Swiat.BUDYNKI[5]):
+	for x in Plan.DZIALKI_X:
+		if _nachodza(Plan.obrys_dzialki(x), Plan.BUDYNKI[5]):
 			na_skupie.append("x=%.1f" % x)
 	_sprawdz("działki nie wchodzą w skup złomu%s" % (
 		"" if na_skupie.is_empty() else " - " + ", ".join(na_skupie)
@@ -227,7 +243,7 @@ func _test_rozmieszczenie() -> void:
 	var w_scianie := 0
 	for fant in get_tree().get_nodes_in_group("kolekcjonerskie"):
 		var p: Vector3 = fant.global_position
-		if Swiat.czy_zajete(p.x, p.z):
+		if Plan.czy_zajete(p.x, p.z):
 			w_scianie += 1
 	_sprawdz("żaden fant nie wpadł w budynek ani na jezdnię (%d)" % w_scianie, w_scianie == 0)
 
@@ -258,7 +274,7 @@ func _test_kompas() -> void:
 ## Cel dnia ma być inny każdego dnia, a dzień ma się rozliczać.
 func _test_cel_i_rozliczenie() -> void:
 	print("\n[11] Cel dnia i rozliczenie")
-	var baza: float = Balans.CEL_BAZOWY + Balans.CEL_ZA_DZIEN * (Game.dzien - 1)
+	var baza: float = (Balans.CEL_BAZOWY + Balans.CEL_ZA_DZIEN * (Game.dzien - 1)) 		* Game.mnoznik_celu_dnia()
 	var warianty := {}
 	for i in 40:
 		Game._losuj_cel_dnia()
@@ -350,6 +366,192 @@ func _test_ruch_uliczny() -> void:
 	# przewijamy w czystej symulacji: te same wzory, ustalony krok czasu,
 	# trzy minuty jazdy w ułamku sekundy.
 	_sprawdz("kolumna nie zderza się przez 3 minuty jazdy", _symuluj_kolumne(180.0))
+
+## Dzień kariery ma teraz nazwę i charakter. Test pilnuje, żeby modyfikatory
+## nie wyszły poza sens: sobota ma być lepsza w fantach, poniedziałek gorszy
+## w kursie skupu, a tydzień ma się zawijać (dzień 8 = znowu poniedziałek).
+func _test_dni_tygodnia() -> void:
+	print("\n[14] Dni tygodnia mają charakter")
+	var dzien_pierwotny := Game.dzien
+	Game.dzien = 1
+	_sprawdz("dzień 1 to poniedziałek", Game.dzien_tygodnia() == Balans.PONIEDZIALEK)
+	Game.dzien = 8
+	_sprawdz("dzień 8 to znowu poniedziałek (tydzień się zawija)",
+		Game.dzien_tygodnia() == Balans.PONIEDZIALEK)
+	Game.dzien = 6
+	_sprawdz("dzień 6 to sobota", Game.dzien_tygodnia() == Balans.SOBOTA)
+	_sprawdz("w sobotę leży więcej fantów", Game.mnoznik_fantow() > 1.0)
+	Game.dzien = 4
+	_sprawdz("w czwartek akumulatory na promocji", Game.mnoznik_akumulatora() > 1.0)
+	Game.dzien = 2
+	_sprawdz("we wtorek żadnych promocji", is_equal_approx(Game.mnoznik_akumulatora(), 1.0))
+	# Poniedziałkowy kurs musi faktycznie być gorszy - to jedyny sposób,
+	# żeby sprawdzić modyfikator, który siedzi w losowaniu
+	Game.dzien = 1
+	Game._losuj_kurs_zlomu()
+	var kurs_poniedzialek := Game.kurs_zlomu
+	_sprawdz("poniedziałkowy kurs mieści się w obniżonych widełkach",
+		kurs_poniedzialek <= Balans.SKUP_MNOZNIK_MAX * Balans.PONIEDZIALEK_KURS + 0.001)
+	var nazwy_ok := true
+	for i in 7:
+		Game.dzien = i + 1
+		if Game.nazwa_dnia_tygodnia().is_empty() or Game.opis_dnia().is_empty():
+			nazwy_ok = false
+	_sprawdz("każdy dzień tygodnia ma nazwę i opis", nazwy_ok)
+	Game.dzien = dzien_pierwotny
+	Game._losuj_kurs_zlomu()
+
+## Pogoda ma być realną zmienną rozgrywki, nie filtrem: mnożniki muszą
+## faktycznie schodzić poniżej 1.0, a zachmurzenie mieścić się w 0..1.
+func _test_pogoda() -> void:
+	print("\n[15] Pogoda zmienia zasady, nie tylko kolory")
+	var pogoda_pierwotna := Game.pogoda
+	var warianty := {}
+	for i in 200:
+		Game._losuj_pogode()
+		warianty[Game.pogoda] = true
+		if Game.zachmurzenie() < 0.0 or Game.zachmurzenie() > 1.0:
+			warianty["POZA_ZAKRESEM"] = true
+	_sprawdz("losują się wszystkie trzy pogody", warianty.size() >= 3)
+	_sprawdz("zachmurzenie zawsze w zakresie 0-1", not warianty.has("POZA_ZAKRESEM"))
+	Game.pogoda = "slonecznie"
+	_sprawdz("przy słońcu nic nie jest mnożone",
+		is_equal_approx(Game.mnoznik_przyczepnosci(), 1.0)
+		and is_equal_approx(Game.mnoznik_hamowania(), 1.0)
+		and is_zero_approx(Game.zachmurzenie()))
+	Game.pogoda = "deszcz"
+	_sprawdz("deszcz to deszcz", Game.deszcz())
+	_sprawdz("w deszczu pojazdy tracą przyczepność", Game.mnoznik_przyczepnosci() < 1.0)
+	_sprawdz("w deszczu gorzej się hamuje na piechotę", Game.mnoznik_hamowania() < 1.0)
+	_sprawdz("pełne zachmurzenie przy deszczu", is_equal_approx(Game.zachmurzenie(), 1.0))
+	Game.pogoda = "pochmurno"
+	_sprawdz("pochmurno jest pośrodku",
+		Game.zachmurzenie() > 0.0 and Game.zachmurzenie() < 1.0)
+	Game.pogoda = pogoda_pierwotna
+
+## TRYB WSIOKA - nagroda za pełny Wsiokometr. Kluczowe jest to, że po
+## zakończeniu pasek SPADA: bez tego szał odpalałby się w kółko i podwójna
+## kaucja przestałaby być wydarzeniem.
+func _test_tryb_wsioka() -> void:
+	print("\n[16] Wsiokometr 100% odpala TRYB WSIOKA")
+	# Czyścimy PRZED odpaleniem trybu - _wyczysc_plecak() gasi też Wsiokometr,
+	# więc wywołane w środku testu wyłączyłoby to, co właśnie sprawdzamy
+	_wyczysc_plecak()
+	_sprawdz("bez trybu kaucja liczy się normalnie", is_equal_approx(Game.mnoznik_kaucji(), 1.0))
+	Game.dodaj_wsiokometr(100.0)
+	_sprawdz("pełny Wsiokometr odpala tryb", Game.tryb_wsioka_aktywny())
+	_sprawdz("w trybie kaucja jest podwójna",
+		is_equal_approx(Game.mnoznik_kaucji(), Balans.TRYB_WSIOKA_MNOZNIK))
+	# Podniesienie w trybie musi faktycznie płacić podwójnie
+	var wynik: Dictionary = Game.podnies_przedmiot({"nazwa": "puszka", "kaucja": 1.0})
+	_sprawdz("fant podniesiony w trybie wart podwójnie (%.2f zł)" % float(wynik["kaucja"]),
+		is_equal_approx(float(wynik["kaucja"]), 1.0 * int(wynik["mnoznik"]) * Balans.TRYB_WSIOKA_MNOZNIK))
+	Game._zakoncz_tryb_wsioka()
+	_sprawdz("po wygaśnięciu tryb jest wyłączony", not Game.tryb_wsioka_aktywny())
+	_sprawdz("po wygaśnięciu Wsiokometr spada (%.0f%%)" % Game.wsiokometr,
+		Game.wsiokometr <= Balans.TRYB_WSIOKA_PO)
+	_sprawdz("kaucja wraca do normalnej ceny", is_equal_approx(Game.mnoznik_kaucji(), 1.0))
+	_wyczysc_plecak()
+
+## KSIĘGA WSIOKA. Sam fakt, że wpisy się przyznają, to za mało - najgorsze
+## błędy w takim systemie to duplikaty id i wpisy progowe bez progu, bo
+## odblokowują się wtedy natychmiast albo nigdy.
+func _test_osiagniecia() -> void:
+	print("\n[17] Osiągnięcia (Księga wsioka)")
+	_sprawdz("Księga ma co najmniej 20 wpisów (%d)" % Osiagniecia.ile_wszystkich(),
+		Osiagniecia.ile_wszystkich() >= 20)
+	var id_widziane := {}
+	var duplikaty: Array[String] = []
+	var bez_progu: Array[String] = []
+	for wpis in Osiagniecia.LISTA:
+		var id := str(wpis["id"])
+		if id_widziane.has(id):
+			duplikaty.append(id)
+		id_widziane[id] = true
+		if wpis.has("licznik") and int(wpis.get("prog", 0)) <= 0:
+			bez_progu.append(id)
+		if str(wpis.get("nazwa", "")).is_empty() or str(wpis.get("opis", "")).is_empty():
+			bez_progu.append(id + " (brak opisu)")
+	_sprawdz("każde id jest unikalne%s" % (
+		"" if duplikaty.is_empty() else " - duplikaty: " + ", ".join(duplikaty)
+	), duplikaty.is_empty())
+	_sprawdz("wpisy progowe mają dodatni próg i komplet opisów%s" % (
+		"" if bez_progu.is_empty() else " - winne: " + ", ".join(bez_progu)
+	), bez_progu.is_empty())
+	# Przyznawanie i odporność na powtórki
+	Osiagniecia.przyznaj("legenda")
+	var ile_po_pierwszym := Osiagniecia.ile_zdobytych()
+	Osiagniecia.przyznaj("legenda")
+	_sprawdz("to samo osiągnięcie nie liczy się dwa razy",
+		Osiagniecia.ile_zdobytych() == ile_po_pierwszym)
+	_sprawdz("zdobyte osiągnięcie jest w Księdze", Osiagniecia.czy_zdobyte("legenda"))
+	Osiagniecia.przyznaj("nie_ma_takiego_osiagniecia")
+	_sprawdz("nieznane id nie psuje Księgi",
+		Osiagniecia.ile_zdobytych() == ile_po_pierwszym)
+	# Licznik progowy: "pierwszy grosz" odblokowuje pierwszy zebrany fant
+	Osiagniecia.zglos("zebrane")
+	_sprawdz("licznik odblokowuje wpis progowy", Osiagniecia.czy_zdobyte("pierwszy_grosz"))
+	_sprawdz("opis postępu wpisu progowego nie jest pusty",
+		not Osiagniecia.opis_postepu("sto_smietnikow").is_empty())
+	_sprawdz("wpis zdarzeniowy nie ma opisu postępu",
+		Osiagniecia.opis_postepu("legenda").is_empty())
+	# sprawdz_prog zapamiętuje NAJWYŻSZY wynik, a nie sumuje
+	Osiagniecia.sprawdz_prog("bank", 100.0)
+	Osiagniecia.sprawdz_prog("bank", 50.0)
+	_sprawdz("próg zapamiętuje najwyższy wynik, nie sumuje",
+		int(Osiagniecia.postep.get("bank", 0)) == 100)
+
+## POJEDYNEK Z HEŃKIEM - licznik rywala i rozliczenie na koniec dnia.
+func _test_rywalizacja() -> void:
+	print("\n[18] Pojedynek z Heńkiem")
+	Game.konkurent_kasa = 0.0
+	Game.konkurent_sztuk = 0
+	Game.kasa = 0.0
+	Game.konkurent_zebral(1.5)
+	Game.konkurent_zebral(0.5)
+	_sprawdz("łup Heńka się sumuje", is_equal_approx(Game.konkurent_kasa, 2.0))
+	_sprawdz("licznik sztuk rośnie", Game.konkurent_sztuk == 2)
+	_sprawdz("przy pustej kasie prowadzi Heniek", Game.przewaga_nad_konkurentem() < 0.0)
+	Game.dodaj_kase(5.0)
+	_sprawdz("po zarobku prowadzisz ty", Game.przewaga_nad_konkurentem() > 0.0)
+	_sprawdz("premia za wygraną z Heńkiem jest dodatnia", Balans.PREMIA_ZA_HENIEKA > 0.0)
+	# Fant na mapie musi umieć podać swoją wartość - inaczej Heniek zbierałby
+	# butelki "za darmo" i licznik stałby w miejscu
+	var fanty := get_tree().get_nodes_in_group("kolekcjonerskie")
+	var wartosci_ok := true
+	for fant in fanty:
+		if not fant.has_method("wartosc") or float(fant.wartosc()) <= 0.0:
+			wartosci_ok = false
+			break
+	_sprawdz("każdy fant zna swoją wartość (Heniek ją liczy)", wartosci_ok)
+	_wyczysc_plecak()
+
+## Trzy butelkomaty zamiast jednego i kolejka babć.
+func _test_butelkomaty() -> void:
+	print("\n[19] Butelkomaty: trzy punkty i kolejka")
+	var automaty := get_tree().get_nodes_in_group("butelkomat")
+	_sprawdz("na mapie stoją co najmniej trzy butelkomaty (%d)" % automaty.size(),
+		automaty.size() >= 3)
+	var nazwy := {}
+	var rozstawione := true
+	for automat in automaty:
+		nazwy[str(automat.nazwa_punktu)] = true
+		if not automat.has_method("czy_kolejka"):
+			rozstawione = false
+	_sprawdz("każdy punkt ma własną nazwę (%d różnych)" % nazwy.size(),
+		nazwy.size() == automaty.size())
+	_sprawdz("każdy automat umie zgłosić kolejkę", rozstawione)
+	# Punkty muszą być ROZRZUCONE - trzy automaty obok siebie nie dają
+	# żadnego wyboru, a o wybór w tym chodzi
+	var najmniejszy_odstep := INF
+	for i in automaty.size():
+		for j in range(i + 1, automaty.size()):
+			najmniejszy_odstep = minf(najmniejszy_odstep,
+				automaty[i].global_position.distance_to(automaty[j].global_position))
+	_sprawdz("automaty dzieli co najmniej 20 m (%.0f m)" % najmniejszy_odstep,
+		najmniejszy_odstep >= 20.0)
+	_sprawdz("kolejka nie trwa dłużej niż kilkanaście sekund",
+		Balans.KOLEJKA_MAX <= 15.0 and Balans.KOLEJKA_MIN > 0.0)
 
 ## Symulacja kolumny aut na pętli tą samą logiką, co w grze.
 ## Zwraca false, jeśli w którymkolwiek momencie odstęp spadł poniżej długości

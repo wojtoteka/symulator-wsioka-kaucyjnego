@@ -36,6 +36,11 @@ var _pasek_zlecenia: ColorRect
 var _przyciski_sklepu := {}    # id ulepszenia -> Button
 var _w_przejsciu := false
 var _kasa_wyswietlana := 0.0   # do animowanego naliczania kasy
+var _sepia: ColorRect          # filtr TRYBU WSIOKA (mnożenie kolorów)
+var _ety_tryb: Label           # wielki licznik "TRYB WSIOKA 12 s"
+var _ety_rywal: Label          # tablica wyników: Ty vs Heniek
+var _wiersz_czasu: HBoxContainer   # zegar u góry (chowany po dzwonku)
+var _sepia_cel := Color.WHITE  # docelowy kolor filtru (żeby nie mnożyć tweenów)
 
 const SZEROKOSC_PASKA := 170.0
 
@@ -59,6 +64,8 @@ func _ready() -> void:
 	Game.upojenie.connect(_aktualizuj_upojenie)
 	Game.wyzwanie_changed.connect(_aktualizuj_wyzwanie)
 	Game.zlecenie_changed.connect(_aktualizuj_zlecenie)
+	Game.tryb_wsioka_changed.connect(_aktualizuj_tryb_wsioka)
+	Game.rywal_changed.connect(_aktualizuj_rywala)
 	# Stan wyzwania na starcie sceny
 	if not Game.wyzwanie.is_empty():
 		_aktualizuj_wyzwanie(
@@ -202,6 +209,19 @@ func _zbuduj() -> void:
 	_korzen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_korzen)
 
+	# TRYB WSIOKA - filtr sepii na samym spodzie, nad obrazem 3D.
+	# Blend MNOŻENIA, a nie zwykła półprzezroczysta plama: mnożenie zostawia
+	# jasność sceny w spokoju, a tylko wycina błękity. Dzięki temu osiedle
+	# robi się rude jak stara fotografia, zamiast po prostu pomarańczowe.
+	_sepia = ColorRect.new()
+	_sepia.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_sepia.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sepia.color = Color.WHITE   # biel = neutralny mnożnik, czyli "wyłączone"
+	var mat_sepii := CanvasItemMaterial.new()
+	mat_sepii.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+	_sepia.material = mat_sepii
+	_korzen.add_child(_sepia)
+
 	# Filtr koloru pod resztą UI: bursztyn po piwie, szarość na kacu
 	_nakladka = ColorRect.new()
 	_nakladka.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -222,7 +242,15 @@ func _zbuduj() -> void:
 	lewy.add_child(_wiersz("moneta", _ety_kasa))
 	_ety_plecak = _etykieta("0/%d" % Game.pojemnosc_plecaka(), 22)
 	lewy.add_child(_wiersz("butelka", _ety_plecak))
-	lewy.add_child(_etykieta("Dzień %d | Cel: %s" % [Game.dzien, Game.zl(Game.cel_dnia)], 16, Color(0.8, 0.8, 0.8)))
+	# Dzień kariery przestał być samym numerem - ma nazwę i pogodę,
+	# bo obie rzeczy zmieniają dziś zasady gry
+	lewy.add_child(_etykieta("Dzień %d (%s), %s | Cel: %s" % [
+		Game.dzien, Game.nazwa_dnia_tygodnia(), Game.opis_pogody(), Game.zl(Game.cel_dnia),
+	], 16, Color(0.8, 0.8, 0.8)))
+	# TABLICA WYNIKÓW - Ty kontra Heniek, przez cały dzień na oczach
+	_ety_rywal = _etykieta("", 16, Color(0.85, 0.9, 0.85))
+	lewy.add_child(_ety_rywal)
+	_aktualizuj_rywala(Game.konkurent_kasa, Game.konkurent_sztuk)
 	# Wyzwanie dnia (losowane codziennie)
 	_ety_wyzwanie = _etykieta("", 15, Color(0.7, 0.9, 1.0))
 	lewy.add_child(_ety_wyzwanie)
@@ -253,14 +281,14 @@ func _zbuduj() -> void:
 	_pasek_zlecenia = _pasek(kolumna_zlecenia, Color(1.0, 0.7, 0.2))
 
 	# Środek góry: timer z ikoną zegara
-	var wiersz_czasu := HBoxContainer.new()
-	wiersz_czasu.add_theme_constant_override("separation", 8)
-	wiersz_czasu.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	wiersz_czasu.position = Vector2(-55, 10)
-	_korzen.add_child(wiersz_czasu)
-	wiersz_czasu.add_child(_ikona("zegar", 30))
+	_wiersz_czasu = HBoxContainer.new()
+	_wiersz_czasu.add_theme_constant_override("separation", 8)
+	_wiersz_czasu.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_wiersz_czasu.position = Vector2(-55, 10)
+	_korzen.add_child(_wiersz_czasu)
+	_wiersz_czasu.add_child(_ikona("zegar", 30))
 	_ety_czas = _etykieta("5:00", 32)
-	wiersz_czasu.add_child(_ety_czas)
+	_wiersz_czasu.add_child(_ety_czas)
 
 	# Combo - duży napis nad środkiem ekranu
 	_ety_combo = _etykieta("", 40, Color(1.0, 0.9, 0.2))
@@ -270,6 +298,16 @@ func _zbuduj() -> void:
 	_ety_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ety_combo.pivot_offset = Vector2(300, 25)
 	_korzen.add_child(_ety_combo)
+
+	# TRYB WSIOKA - licznik pod combo, żeby było widać, ile jeszcze trwa szał
+	_ety_tryb = _etykieta("", 30, Color(1.0, 0.72, 0.2))
+	_ety_tryb.set_anchors_preset(Control.PRESET_CENTER)
+	_ety_tryb.position = Vector2(-300, -110)
+	_ety_tryb.custom_minimum_size = Vector2(600, 0)
+	_ety_tryb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ety_tryb.pivot_offset = Vector2(300, 20)
+	_ety_tryb.modulate.a = 0.0
+	_korzen.add_child(_ety_tryb)
 
 	# Wielkie memy motywacyjne ("NIECH ŻYJE KAUCJA I BEZROBOCIE!")
 	_ety_meme = _etykieta("", 34, Color(1.0, 0.85, 0.25))
@@ -310,7 +348,7 @@ func _zbuduj() -> void:
 	# Kreski pędu - pod resztą UI, nad obrazem 3D
 	_motion_lines = load("res://ui/motion_lines.gd").new()
 	_korzen.add_child(_motion_lines)
-	_korzen.move_child(_motion_lines, 1)   # zaraz nad nakładką koloru
+	_korzen.move_child(_motion_lines, 2)   # nad sepią i nakładką koloru
 
 	# Lewy dolny róg: podpis (prawy zajmuje radar)
 	var wersja := _etykieta("KOCHAM KAUCJĘ", 14, Color(1, 1, 1, 0.5))
@@ -538,10 +576,13 @@ func _wyjdz() -> void:
 	get_tree().quit()
 
 func _pokaz_intro() -> void:
+	# Ostatnia linia jest inna każdego dnia: mówi, czym DZIŚ różni się osiedle.
+	# Bez tego dzień tygodnia i pogoda byłyby zmianą, o której gracz dowiaduje
+	# się dopiero z rachunku na koniec.
 	var intro := _etykieta(
 		"Zbieraj butelki i puszki (E), przeszukuj śmietniki\n" +
-		"i zanieś łup do butelkomatu przy Biedronce!\n" +
-		"Uważaj na kamienie, psa i Heńka. F = argument siłowy.",
+		"i zanieś łup do butelkomatu - są trzy na osiedlu!\n" +
+		Game.opis_dnia(),
 		22
 	)
 	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -562,6 +603,8 @@ func _aktualizuj_kase(kwota: float) -> void:
 	tw.tween_method(_ustaw_tekst_kasy, _kasa_wyswietlana, kwota, 0.8)\
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_kasa_wyswietlana = kwota
+	# Tablica wyników pokazuje RÓŻNICĘ, więc musi reagować na obie strony
+	_aktualizuj_rywala(Game.konkurent_kasa, Game.konkurent_sztuk)
 
 func _ustaw_tekst_kasy(kwota: float) -> void:
 	_ety_kasa.text = Game.zl(kwota)
@@ -592,8 +635,48 @@ func _aktualizuj_papierosa(procent: float, pali: bool) -> void:
 func _aktualizuj_wsiokometr(wartosc: float) -> void:
 	_pasek_wsiokometru.size.x = (SZEROKOSC_PASKA - 4) * wartosc / 100.0
 	_ety_wsiokometr.text = "Wsiokometr: %d%%" % int(wartosc)
-	if wartosc >= 100.0:
+	if Game.tryb_wsioka_aktywny():
+		_ety_wsiokometr.text = "Wsiokometr: TRYB WSIOKA!"
+		_pasek_wsiokometru.color = Paleta.UI_ZLOTY
+	elif wartosc >= 100.0:
 		_ety_wsiokometr.text = "Wsiokometr: LEGENDA OSIEDLA"
+	else:
+		_pasek_wsiokometru.color = Color(1.0, 0.6, 0.15)
+
+## TRYB WSIOKA: ekran wpada w sepię, a na środku odlicza licznik.
+## Sepia jest tu robotą, nie ozdobą - to ona sprawia, że przez piętnaście
+## sekund gra WYGLĄDA inaczej, więc gracz czuje, że coś się dzieje,
+## nawet nie patrząc na pasek.
+func _aktualizuj_tryb_wsioka(aktywny: bool, pozostalo: float) -> void:
+	if aktywny:
+		_ety_tryb.text = "TRYB WSIOKA - PODWÓJNA KAUCJA (%d s)" % int(ceilf(pozostalo))
+		# Ostatnie trzy sekundy pulsują - ostrzeżenie, że szał się kończy
+		var koniec_blisko := pozostalo <= 3.0
+		_ety_tryb.modulate.a = 1.0 if not koniec_blisko \
+			else 0.55 + 0.45 * absf(sin(pozostalo * TAU))
+	else:
+		_ety_tryb.text = ""
+		_ety_tryb.modulate.a = 0.0
+	# Kolor mnożenia: biel nic nie zmienia, ruda sepia wycina błękity.
+	# Sygnał leci co klatkę, więc tween odpalamy TYLKO przy zmianie celu -
+	# inaczej co klatkę powstawałby nowy i wszystkie biłyby się o tę samą wartość.
+	var docelowy := Color(1.0, 0.82, 0.52) if aktywny else Color.WHITE
+	if _sepia_cel != docelowy:
+		_sepia_cel = docelowy
+		create_tween().tween_property(_sepia, "color", docelowy, 0.5)
+	_aktualizuj_wsiokometr(Game.wsiokometr)
+
+## TABLICA WYNIKÓW: Ty kontra Heniek. Rywal, którego widać w liczbach,
+## goni znacznie skuteczniej niż rywal, który po prostu chodzi po mapie.
+func _aktualizuj_rywala(kwota: float, sztuk: int) -> void:
+	if _ety_rywal == null:
+		return
+	var przewaga := Game.kasa - kwota
+	_ety_rywal.text = "Ty %s | Heniek %s (%d szt.)" % [
+		Game.zl(Game.kasa), Game.zl(kwota), sztuk,
+	]
+	_ety_rywal.add_theme_color_override("font_color",
+		Paleta.UI_ZIELONY if przewaga >= 0.0 else Paleta.UI_CZERWONY)
 
 ## Combo: napis rośnie i puchnie z każdym poziomem.
 func _aktualizuj_combo(poziom: int, mnoznik: int) -> void:
@@ -685,10 +768,15 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 		marginesy.add_theme_constant_override(strona, 16)
 	panel.add_child(marginesy)
 	var kolumna := VBoxContainer.new()
-	kolumna.add_theme_constant_override("separation", 4)
+	# Ciasno, bo ekran podsumowania musi zmieścić się w 720p RAZEM z MELINĄ,
+	# a MELINA ma teraz dziewięć pozycji
+	kolumna.add_theme_constant_override("separation", 2)
 	marginesy.add_child(kolumna)
 
-	kolumna.add_child(_etykieta("KONIEC DNIA %d NA OSIEDLU!" % dane["dzien"], 28, Color(1.0, 0.85, 0.3)))
+	kolumna.add_child(_etykieta("KONIEC DNIA %d NA OSIEDLU!" % dane["dzien"], 26, Color(1.0, 0.85, 0.3)))
+	kolumna.add_child(_etykieta("%s, %s" % [
+		str(dane.get("dzien_tygodnia", "")).capitalize(), dane.get("pogoda", ""),
+	], 15, Color(0.72, 0.8, 0.88)))
 	kolumna.add_child(_etykieta("Zarobiona kaucja: %s" % Game.zl(dane["kasa"]), 22, Color(0.6, 1.0, 0.6)))
 	# Żartobliwy komentarz "co możesz kupić"
 	var zakupy := _etykieta(dane["zakupy"], 16, Color(1.0, 0.9, 0.6))
@@ -703,14 +791,13 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 			Game.zl(maxf(float(dane.get("cel_kwota", 0.0)) - float(dane["kasa"]), 0.0)),
 			Game.zl(dane.get("cel_kwota", 0.0)),
 		], 17, Paleta.UI_CZERWONY))
-	kolumna.add_child(_etykieta("Zebrane przedmioty: %d (w tym złote: %d)" % [dane["zebrane"], dane["zlote"]], 17))
-	kolumna.add_child(_etykieta("Oddane w butelkomacie: %d | Złom na skup: %d" % [
-		dane["oddane"], dane.get("zlom", 0)], 17))
-	kolumna.add_child(_etykieta("Przeszukane śmietniki: %d" % dane["smietniki"], 17))
-	if dane.get("zlecenia", 0) > 0 or dane.get("loty", 0) > 0:
-		kolumna.add_child(_etykieta("Zlecenia: %d | Loty z ramp: %d" % [
-			dane.get("zlecenia", 0), dane.get("loty", 0)], 17, Color(1.0, 0.85, 0.5)))
-	kolumna.add_child(_etykieta("Najlepsze combo: x%d | Gleby: %d" % [dane["combo_max"], dane["upadki"]], 17))
+	# Statystyki w dwóch gęstych wierszach zamiast czterech - przy dziewięciu
+	# ulepszeniach w MELINIE każdy zaoszczędzony wiersz to realne piksele
+	kolumna.add_child(_etykieta("Zebrane: %d (złote: %d) | Oddane: %d | Złom: %d" % [
+		dane["zebrane"], dane["zlote"], dane["oddane"], dane.get("zlom", 0)], 16))
+	kolumna.add_child(_etykieta("Śmietniki: %d | Combo x%d | Gleby: %d | Zlecenia: %d | Loty: %d" % [
+		dane["smietniki"], dane["combo_max"], dane["upadki"],
+		dane.get("zlecenia", 0), dane.get("loty", 0)], 16))
 	if dane["mandaty"] > 0:
 		kolumna.add_child(_etykieta(
 			"Mandaty od Straży Miejskiej: %d. System cię widzi." % dane["mandaty"],
@@ -726,6 +813,32 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 		kolumna.add_child(_etykieta("Wyzwanie dnia zaliczone: %s" % dane["wyzwanie_opis"], 15, Paleta.UI_ZLOTY))
 	else:
 		kolumna.add_child(_etykieta("Wyzwanie niezaliczone: %s. Jutro też jest dzień." % dane["wyzwanie_opis"], 15, Color(0.7, 0.7, 0.7)))
+	# POJEDYNEK Z HEŃKIEM - osobna tabelka, osobna premia
+	var rywal_kasa := float(dane.get("rywal_kasa", 0.0))
+	kolumna.add_child(_etykieta("- POJEDYNEK: Ty %s / Heniek %s (%d szt. sprzed nosa) -" % [
+		Game.zl(dane["kasa"]), Game.zl(rywal_kasa), int(dane.get("rywal_sztuk", 0)),
+	], 18, Color(1.0, 0.8, 0.6)))
+	if dane.get("rywal_wygrany", false):
+		kolumna.add_child(_etykieta(
+			"WYGRANA O %s! Premia %s do banku. Heniek udaje, że go to nie rusza." % [
+				Game.zl(float(dane["kasa"]) - rywal_kasa),
+				Game.zl(float(dane.get("premia_rywal", 0.0))),
+			], 17, Paleta.UI_ZLOTY))
+	else:
+		kolumna.add_child(_etykieta(
+			"Heniek wygrał o %s. Jutro rewanż." % Game.zl(rywal_kasa - float(dane["kasa"])),
+			17, Paleta.UI_CZERWONY))
+	# KSIĘGA WSIOKA - co odblokowało się dzisiaj
+	var nowe_wpisy: Array = dane.get("osiagniecia_dzis", [])
+	if not nowe_wpisy.is_empty():
+		kolumna.add_child(_etykieta("Księga wsioka [%d/%d] - nowe wpisy: %s" % [
+			Osiagniecia.ile_zdobytych(), Osiagniecia.ile_wszystkich(),
+			", ".join(PackedStringArray(nowe_wpisy)),
+		], 15, Paleta.UI_ZLOTY))
+	else:
+		kolumna.add_child(_etykieta("Księga wsioka: %d/%d wpisów" % [
+			Osiagniecia.ile_zdobytych(), Osiagniecia.ile_wszystkich(),
+		], 15, Color(0.75, 0.75, 0.75)))
 	# ROZLICZENIE DNIA - dwa zadania naraz: kwota i wyzwanie
 	if float(dane.get("premia", 0.0)) > 0.0:
 		kolumna.add_child(_etykieta(
@@ -749,13 +862,24 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 	_ety_bank = _etykieta("Bank kariery: %s" % Game.zl(Game.bank), 15, Paleta.UI_ZIELONY)
 	kolumna.add_child(_ety_bank)
 	_przyciski_sklepu.clear()
+	# DWIE KOLUMNY: przy dziewięciu ulepszeniach jedna kolumna wypychała
+	# ekran podsumowania poza 720p. W siatce 2x5 wszystko się mieści,
+	# a przyciski nadal da się przeczytać.
+	var siatka := GridContainer.new()
+	siatka.columns = 2
+	siatka.add_theme_constant_override("h_separation", 8)
+	siatka.add_theme_constant_override("v_separation", 4)
+	kolumna.add_child(siatka)
 	for id in Game.ULEPSZENIA_INFO:
 		var przycisk := _przycisk("", _kup_ulepszenie.bind(id))
-		# Niższe przyciski - przy sześciu ulepszeniach ekran musi się zmieścić w 720p
-		przycisk.custom_minimum_size = Vector2(420, 28)
-		przycisk.add_theme_font_size_override("font_size", 14)
+		przycisk.custom_minimum_size = Vector2(310, 24)
+		przycisk.add_theme_font_size_override("font_size", 13)
+		# Opis wjeżdża do dymka, a nie na przycisk: "Fanty z 3 m same wpadają
+		# do plecaka" nie mieści się w 310 px i ucinało się w połowie słowa
+		przycisk.tooltip_text = "%s - %s" % [
+			Game.ULEPSZENIA_INFO[id]["nazwa"], Game.ULEPSZENIA_INFO[id]["opis"]]
 		_przyciski_sklepu[id] = przycisk
-		kolumna.add_child(przycisk)
+		siatka.add_child(przycisk)
 	_odswiez_sklep()
 	kolumna.add_child(_etykieta("Naciśnij R, aby zacząć dzień %d" % (dane["dzien"] + 1), 19, Color(1.0, 0.95, 0.5)))
 
@@ -767,6 +891,10 @@ func _pokaz_podsumowanie(dane: Dictionary) -> void:
 	_panel_zlecenia.visible = false
 	_panel_hud.visible = false
 	_kanal_komunikatow.visible = false
+	# Zegar też znika: dzień się skończył, a tykający licznik nad ekranem
+	# podsumowania sugerował, że coś jeszcze trwa
+	_wiersz_czasu.visible = false
+	_ety_tryb.modulate.a = 0.0
 
 ## Zakup w MELINIE - odświeża przyciski i bank.
 func _kup_ulepszenie(id: String) -> void:
@@ -788,7 +916,7 @@ func _odswiez_sklep() -> void:
 			przycisk.text = "%s (%d/%d) - MAKS" % [info["nazwa"], poziom, maks]
 			przycisk.disabled = true
 		else:
-			przycisk.text = "%s (%d/%d) - %s | %s" % [
-				info["nazwa"], poziom, maks, info["opis"], Game.zl(cena)
-			]
+			przycisk.text = "%s (%d/%d) - %s" % [info["nazwa"], poziom, maks, Game.zl(cena)]
+			# Nie stać? Przycisk zostaje aktywny, ale widać, że to na kiedy indziej
 			przycisk.disabled = false
+			przycisk.modulate = Color.WHITE if Game.bank >= cena else Color(1, 1, 1, 0.55)

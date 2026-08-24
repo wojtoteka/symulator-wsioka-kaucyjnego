@@ -66,13 +66,31 @@ func _wybierz_cel() -> void:
 	_najblizszy_fant()
 
 ## Szuka celu po nazwie zwracanej przez nazwa_celu().
+##
+## Od kiedy butelkomatów jest trzy, "pierwszy z brzegu" przestał wystarczać -
+## strzałka potrafiła prowadzić przez pół mapy do automatu przy Biedronce,
+## gdy dwa metry dalej stał wolny. Wybieramy NAJBLIŻSZY, a punkt z kolejką
+## traktujemy tak, jakby był o 25 m dalej: zwykle opłaca się iść do wolnego,
+## ale gdy stoisz przy zajętym, strzałka nie każe biec na drugi koniec osiedla.
+const KARA_ZA_KOLEJKE := 25.0
+
 func _ustaw(nazwa: String, opis: String) -> void:
+	var najlepszy: Node3D = null
+	var najlepszy_koszt := INF
 	for kandydat in get_tree().get_nodes_in_group("cel_nawigacji"):
-		if is_instance_valid(kandydat) and kandydat.has_method("nazwa_celu") \
-				and kandydat.nazwa_celu() == nazwa:
-			_cel = kandydat
-			_opis = opis
-			return
+		if not (is_instance_valid(kandydat) and kandydat.has_method("nazwa_celu")):
+			continue
+		if kandydat.nazwa_celu() != nazwa:
+			continue
+		var koszt: float = _gracz.global_position.distance_to(kandydat.global_position)
+		if kandydat.has_method("czy_kolejka") and kandydat.czy_kolejka():
+			koszt += KARA_ZA_KOLEJKE
+		if koszt < najlepszy_koszt:
+			najlepszy_koszt = koszt
+			najlepszy = kandydat
+	if najlepszy:
+		_cel = najlepszy
+		_opis = opis
 
 ## Gdy nie ma pilniejszych spraw - prowadzimy do najbliższej butelki.
 func _najblizszy_fant() -> void:

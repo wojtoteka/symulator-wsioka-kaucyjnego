@@ -1,0 +1,43 @@
+name: Autotesty
+
+# Gra jest robiona dla zabawy, ale balans zmienia się co chwilę i łatwo
+# przy okazji rozjechać coś, czego nie widać na ekranie (drzewo na jezdni,
+# nagle nieodtykalny butelkomat, cel dnia poza widełkami). scripts/autotest.gd
+# sprawdza to wszystko w trybie headless w kilka sekund - szkoda, żeby
+# uruchamiało się tylko wtedy, gdy ktoś sobie o nim przypomni.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT: "4.3"
+
+jobs:
+  autotesty:
+    name: Godot 4.3 headless
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pobierz Godota
+        run: |
+          PLIK="Godot_v${GODOT}-stable_linux.x86_64"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT}-stable/${PLIK}.zip"
+          unzip -q "${PLIK}.zip"
+          mv "${PLIK}" godot
+          chmod +x godot
+          ./godot --version
+
+      # Pierwsze uruchomienie buduje cache .godot/ (ikona, pliki .import).
+      # Kod wyjścia ignorujemy: w repozytorium nie ma plików music/*.mp3
+      # (prawa autorskie), więc import zgłasza brak źródeł - i słusznie.
+      - name: Zaimportuj zasoby
+        run: ./godot --headless --import --quit || true
+
+      - name: Uruchom autotesty
+        run: ./godot --headless -- --autostart --testy

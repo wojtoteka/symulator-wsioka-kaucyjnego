@@ -329,6 +329,38 @@ func _zbuduj_skuter_wizual() -> void:
 	lusterko.material_override = _material(Color(0.6, 0.65, 0.7))
 	lusterko.position = Vector3(0.3, 1.16, -0.5)
 	_skuter_wizual.add_child(lusterko)
+	# PRZYCZEPKA (ulepszenie): dyszel, skrzynia i dwa kółka za skuterem.
+	# Doczepiana tylko, gdy kupiona - i to ona zbiera fanty w biegu.
+	if Game.ma_przyczepe():
+		_zbuduj_przyczepe()
+
+## Przyczepka doczepiana do skutera - widoczny dowód, że ulepszenie działa.
+func _zbuduj_przyczepe() -> void:
+	var dyszel := MeshInstance3D.new()
+	var pret := BoxMesh.new()
+	pret.size = Vector3(0.06, 0.06, 0.55)
+	dyszel.mesh = pret
+	dyszel.material_override = _material(Color(0.25, 0.25, 0.28))
+	dyszel.position = Vector3(0, 0.32, 0.9)
+	_skuter_wizual.add_child(dyszel)
+	var skrzynia := MeshInstance3D.new()
+	var pudlo_skrzyni := BoxMesh.new()
+	pudlo_skrzyni.size = Vector3(0.62, 0.34, 0.7)
+	skrzynia.mesh = pudlo_skrzyni
+	skrzynia.material_override = _material(Color(0.55, 0.42, 0.22))
+	skrzynia.position = Vector3(0, 0.42, 1.5)
+	_skuter_wizual.add_child(skrzynia)
+	for bok in [-0.3, 0.3]:
+		var kolo := MeshInstance3D.new()
+		var walec := CylinderMesh.new()
+		walec.top_radius = 0.16
+		walec.bottom_radius = 0.16
+		walec.height = 0.08
+		kolo.mesh = walec
+		kolo.material_override = _material(Color(0.1, 0.1, 0.11))
+		kolo.rotation.z = PI / 2
+		kolo.position = Vector3(bok, 0.16, 1.5)
+		_skuter_wizual.add_child(kolo)
 
 # --- Sterowanie ---
 
@@ -413,8 +445,37 @@ func _physics_process(delta: float) -> void:
 	Game.raportuj_ruch(Vector2(velocity.x, velocity.z).length(), delta)
 	_sprawdz_potkniecie()
 	_szukaj_interakcji()
+	_magnes(delta)
 	_efekt_piwa(delta)
 	_efekt_wstrzasu(delta)
+
+## MAGNES NA BUTELKI (ulepszenie z MELINY).
+##
+## To nie jest "+15% do czegoś" - to nowy sposób grania. Bez magnesu każda
+## butelka to podejście i wciśnięcie E; z magnesem przebiegasz przez trawnik,
+## a fanty same wpadają do plecaka. Zbieranie z czynności robi się trasą.
+##
+## Świadomie NIE ciągniemy niczego, gdy plecak jest pełny: fanty krążące
+## wokół gracza, których nie da się podnieść, wyglądałyby jak usterka.
+func _magnes(delta: float) -> void:
+	if not Game.ma_magnes() or lezy or _cwiczy or siedzi:
+		return
+	var srodek := global_position + Vector3(0, 0.35, 0)
+	for fant in get_tree().get_nodes_in_group("kolekcjonerskie"):
+		if Game.zajete_miejsca() >= Game.pojemnosc_plecaka():
+			return   # dobiliśmy do limitu w trakcie zbierania
+		if not is_instance_valid(fant):
+			continue
+		var do_gracza: Vector3 = srodek - fant.global_position
+		var dystans := do_gracza.length()
+		if dystans > Balans.MAGNES_ZASIEG:
+			continue
+		if dystans < Balans.MAGNES_ZLAPANIE:
+			fant.interakcja(self)
+			continue
+		# Im bliżej, tym szybciej - fant "wpada", zamiast leniwie dryfować
+		var tempo: float = 1.5 + Balans.MAGNES_SILA * (1.0 - dystans / Balans.MAGNES_ZASIEG)
+		fant.global_position += do_gracza.normalized() * tempo * delta
 
 ## Screen shake: kamera drży z malejącą siłą (sygnał Game.wstrzas).
 func _efekt_wstrzasu(delta: float) -> void:
@@ -487,12 +548,17 @@ func _fizyka_chodu(delta: float) -> void:
 		var bok := Vector3(-kierunek.z, 0, kierunek.x)
 		var znoszenie := sin(Time.get_ticks_msec() / 400.0) * 0.18 * minf(_piwa_wypite, 3)
 		kierunek = (kierunek + bok * znoszenie).normalized()
+	# Na mokrym adidasy buksują przy starcie i nie chcą hamować przy stopie.
+	# To jeden mnożnik, ale czuć go natychmiast: w deszczu wyhamowanie przed
+	# butelką trwa dłużej, niż podpowiada nawyk z suchego dnia.
+	var przyspieszenie := Balans.PRZYSPIESZENIE * Game.mnoznik_przyspieszenia()
+	var hamowanie := Balans.HAMOWANIE * Game.mnoznik_hamowania()
 	if kierunek:
-		velocity.x = move_toward(velocity.x, kierunek.x * predkosc, Balans.PRZYSPIESZENIE * delta)
-		velocity.z = move_toward(velocity.z, kierunek.z * predkosc, Balans.PRZYSPIESZENIE * delta)
+		velocity.x = move_toward(velocity.x, kierunek.x * predkosc, przyspieszenie * delta)
+		velocity.z = move_toward(velocity.z, kierunek.z * predkosc, przyspieszenie * delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0, Balans.HAMOWANIE * delta)
-		velocity.z = move_toward(velocity.z, 0, Balans.HAMOWANIE * delta)
+		velocity.x = move_toward(velocity.x, 0, hamowanie * delta)
+		velocity.z = move_toward(velocity.z, 0, hamowanie * delta)
 
 	# Animacja chodu: podskoki, kołysanie i machanie rękami (szybciej = mocniej)
 	var szybkosc_anim := Vector2(velocity.x, velocity.z).length()
@@ -540,7 +606,10 @@ func _fizyka_wozka(delta: float) -> void:
 
 	# Poślizg: velocity leniwie goni kierunek przodu. W driftcie goni go
 	# DUŻO wolniej - stąd charakterystyczne "pływanie" bokiem.
-	var przyczepnosc: float = Balans.DRIFT_PRZYCZEPNOSC if _drift else float(dane["przyczepnosc"])
+	# Deszcz tnie przyczepność pojazdów - mokry asfalt zamienia wózek
+	# w łódkę, a skuter w coś, co skręca dopiero po namyśle
+	var przyczepnosc: float = Balans.DRIFT_PRZYCZEPNOSC if _drift \
+		else float(dane["przyczepnosc"]) * Game.mnoznik_przyczepnosci()
 	var przod := -transform.basis.z * _wozek_predkosc
 	velocity.x = lerpf(velocity.x, przod.x, przyczepnosc * delta)
 	velocity.z = lerpf(velocity.z, przod.z, przyczepnosc * delta)
@@ -564,8 +633,11 @@ func _fizyka_wozka(delta: float) -> void:
 	var docelowy_przechyl := (0.25 * skret) if _drift else 0.0
 	_wyglad.rotation.z = lerpf(_wyglad.rotation.z, docelowy_przechyl, 5.0 * delta)
 
-	# AUTO-ZBIERANIE: wózkiem butelki wpadają same, skuterem już nie
-	if not dane["auto_zbieranie"]:
+	# AUTO-ZBIERANIE: wózkiem butelki wpadają same. Skuterem normalnie NIE -
+	# chyba że kupiłeś PRZYCZEPKĘ w MELINIE. To jest właśnie sens ulepszenia
+	# odblokowującego czasownik: skuter przestaje być samym transportem
+	# i zaczyna być narzędziem pracy.
+	if not (bool(dane["auto_zbieranie"]) or (_typ_pojazdu == "skuter" and Game.ma_przyczepe())):
 		return
 	_auto_zbieranie -= delta
 	if _auto_zbieranie <= 0.0 and Game.zajete_miejsca() < Game.pojemnosc_plecaka():
@@ -596,6 +668,8 @@ func _obsluz_lot(delta: float) -> void:
 	Sfx.graj("zlota", -3.0, 1.2)
 	Game.statystyki["loty"] += 1
 	Game.postep_zlecenia("lot")
+	if lot >= 2.0:
+		Osiagniecia.przyznaj("orbita")
 	var opis := "PIĘKNY LOT!" if lot < 1.0 else ("KOSMICZNY SKOK!" if lot < 1.6 else "ORBITA OSIEDLOWA!")
 	if wyplata > 0.0:
 		Game.pokaz_meme("%s %.1f s w powietrzu - bonus %s" % [opis, lot, Game.zl(wyplata)])
@@ -642,6 +716,7 @@ func _potknij_sie(z_tekstem := true) -> void:
 	_niesmiertelnosc = 3.0
 	Game.statystyki["upadki"] += 1
 	Game.postep_wyzwania("gleby")
+	Osiagniecia.zglos("gleby")
 	if w_wozku:
 		Sfx.graj("brzek")
 		Sfx.odpal_klasyk()   # spektakularna wywrotka = muzyczna oprawa
@@ -760,6 +835,7 @@ func _uderz() -> void:
 	if najblizszy and dystans < 2.4 and najblizszy.has_method("oberwij"):
 		najblizszy.oberwij(self)
 		Game.postep_wyzwania("ciosy")
+		Osiagniecia.zglos("ciosy")
 	elif randf() < 0.3:
 		Game.pokaz_komunikat("Machnąłeś w powietrze. Powietrze niewzruszone.")
 
@@ -809,7 +885,9 @@ func wypij_piwo() -> void:
 	_piwo = minf(_piwo + Balans.CZAS_PIWA, Balans.MAKS_UPOJENIE)
 	_kac = 0.0
 	Sfx.graj("czkawka", -2.0)
+	Game.statystyki["piwa"] += 1
 	Game.postep_wyzwania("piwa")
+	Osiagniecia.zglos("piwa")
 	match _piwa_wypite:
 		1: Game.pokaz_komunikat("Piwo wypite na miejscu, klasyka. Odwaga +15%, świat lekko płynie.")
 		2: Game.pokaz_komunikat("Drugie piwo. Świat nabiera kolorów i przechyłu.")

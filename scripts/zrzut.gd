@@ -23,6 +23,20 @@ const UJECIA: Array = [
 	{"nazwa": "12_automat", "gdzie": Vector3(4.6, 0.2, -24.2), "obrot": 0.0},
 	# Styk działek z obwodnicą - tu płotki wchodziły na asfalt
 	{"nazwa": "11_dzialki_ulica", "gdzie": Vector3(-14, 0.2, 44), "obrot": 250.0},
+	# Wiata z drugim butelkomatem pod małym blokiem
+	{"nazwa": "14_wiata", "gdzie": Vector3(-8.5, 0.2, 25), "obrot": 0.0},
+]
+
+## Ujęcie do przeglądu pór dnia: widok na osiedle spod Biedronki.
+const UJECIE_PORY := {"gdzie": Vector3(0, 0.2, 16), "obrot": 180.0}
+
+## Które momenty dnia utrwalić (ułamek rundy: 0.0 = start, 1.0 = dzwonek).
+## Słońce, niebo i mgła jadą po tej samej osi - patrz scripts/pora_dnia.gd.
+const PORY: Array = [
+	{"nazwa": "15_poranek", "postep": 0.0},
+	{"nazwa": "16_poludnie", "postep": 0.32},
+	{"nazwa": "17_popoludnie", "postep": 0.65},
+	{"nazwa": "18_zachod", "postep": 0.97},
 ]
 
 func _ready() -> void:
@@ -49,13 +63,19 @@ func _ready() -> void:
 		var sciezka := "%s/%s.png" % [KATALOG, ujecie["nazwa"]]
 		obraz.save_png(sciezka)
 		print("ZRZUT: %s -> %s" % [ujecie["nazwa"], ProjectSettings.globalize_path(sciezka)])
+	# PORY DNIA - to jedyny sposób, żeby obejrzeć zachód słońca bez czekania
+	# pięciu minut. Przewijamy zegar rundy i robimy zdjęcie z tego samego miejsca,
+	# więc cztery pliki obok siebie pokazują, jak zmienia się światło.
+	# MUSI być przed kreskami pędu: te wyłączają sobie _process i zostają
+	# na ekranie już do końca przebiegu.
+	await _przeglad_por_dnia(gracz)
 	# Osobne ujęcie z wymuszonymi kreskami pędu (bez tego gracz musiałby jechać)
 	_wymus_motion_lines()
 	await get_tree().create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/9_motion_lines.png" % KATALOG)
 	print("ZRZUT: 9_motion_lines")
-	# Ekran podsumowania z MELINĄ - sprawdzamy, czy sześć ulepszeń się mieści
+	# Ekran podsumowania z MELINĄ - sprawdzamy, czy dziewięć ulepszeń się mieści
 	Game.kasa = 87.5
 	Game.statystyki["zlom"] = 6
 	Game.statystyki["oddany_zlom"] = 6
@@ -71,6 +91,23 @@ func _ready() -> void:
 	await _zmierz_plynnosc()
 	print("ZRZUTY GOTOWE: %s" % ProjectSettings.globalize_path(KATALOG))
 	get_tree().quit(0)
+
+## Przewija czas rundy i zapisuje ten sam kadr o różnych porach dnia.
+## Na koniec przywraca poranek, żeby dalsze zrzuty wyglądały jak zwykle.
+func _przeglad_por_dnia(gracz: Node3D) -> void:
+	gracz.global_position = UJECIE_PORY["gdzie"]
+	gracz.rotation.y = deg_to_rad(float(UJECIE_PORY["obrot"]))
+	gracz.velocity = Vector3.ZERO
+	for pora in PORY:
+		Game.czas = Balans.CZAS_RUNDY * (1.0 - float(pora["postep"]))
+		# PoraDnia odświeża się dziesięć razy na sekundę i dochodzi płynnie -
+		# pół sekundy wystarczy, żeby światło zdążyło dojechać na miejsce
+		await get_tree().create_timer(0.6).timeout
+		await RenderingServer.frame_post_draw
+		var sciezka := "%s/%s.png" % [KATALOG, pora["nazwa"]]
+		get_viewport().get_texture().get_image().save_png(sciezka)
+		print("ZRZUT: %s (postęp dnia %.0f%%)" % [pora["nazwa"], float(pora["postep"]) * 100.0])
+	Game.czas = Balans.CZAS_RUNDY
 
 ## Średni FPS z kilku sekund stania w najgęstszym miejscu mapy.
 func _zmierz_plynnosc() -> void:

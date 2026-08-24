@@ -1,18 +1,67 @@
 extends StaticBody3D
-## BUTELKOMAT przy Biedronce - tu gracz oddaje plecak i dostaje kaucję.
+## BUTELKOMAT - tu gracz oddaje plecak i dostaje kaucję.
+##
+## Na mapie stoją TRZY: przy Biedronce, pod małym blokiem i przy garażach.
+## Jeden był wąskim gardłem - automat zapycha się w ponad jednej trzeciej
+## prób, więc gracz z pełnym plecakiem nie miał dokąd pójść.
+##
+## Do tego dochodzi KOLEJKA: co jakiś czas przy automacie staje babcia
+## z siatą puszek i przez kilka sekund nie ma podejścia. Kolejka leci sama,
+## niezależnie od tego, gdzie jesteś - i o to chodzi. Pytanie brzmi:
+## stoję osiem sekund czy biegnę czterdzieści metrów do następnego?
+
+## Nazwa punktu do komunikatów i podpowiedzi ("przy Biedronce").
+var nazwa_punktu := "przy Biedronce"
 
 var _ekran: MeshInstance3D
 var _material_ekranu: StandardMaterial3D
+var _babcia: Node3D          # wizualna kolejka - pokazuje się, gdy ktoś stoi
+var _kolejka := 0.0          # ile sekund jeszcze potrwa obsługa babci
+var _do_nowej_babci := 0.0   # odliczanie do kolejnego "gościa"
 
 func _ready() -> void:
 	add_to_group("interakcja")
 	add_to_group("bijalne")   # bicie automatu: nie zalecane, ale możliwe
 	add_to_group("cel_nawigacji")
+	add_to_group("butelkomat")   # nawigacja szuka NAJBLIŻSZEGO z tej grupy
 	_zbuduj_bryle()
+	_zbuduj_babcie()
+	_do_nowej_babci = randf_range(Balans.KOLEJKA_PRZERWA_MIN, Balans.KOLEJKA_PRZERWA_MAX)
+	# Część automatów ma kolejkę już od rana - inaczej pierwsza minuta dnia
+	# byłaby zawsze bezproblemowa i mechanika ujawniałaby się dopiero później
+	if randf() < Balans.SZANSA_KOLEJKI:
+		_ustaw_kolejke(randf_range(Balans.KOLEJKA_MIN, Balans.KOLEJKA_MAX))
 
 ## Identyfikator dla strzałki nawigacji (patrz ui/nawigacja.gd).
 func nazwa_celu() -> String:
 	return "butelkomat"
+
+## Czy przy tym automacie ktoś już stoi (pyta o to nawigacja, żeby prowadzić
+## do wolnego punktu, a nie do tego, przy którym i tak się poczeka).
+func czy_kolejka() -> bool:
+	return _kolejka > 0.0
+
+func _process(delta: float) -> void:
+	if Game.w_menu or not Game.gra_trwa:
+		return
+	if _kolejka > 0.0:
+		_kolejka -= delta
+		if _kolejka <= 0.0:
+			_ustaw_kolejke(0.0)
+			_do_nowej_babci = randf_range(Balans.KOLEJKA_PRZERWA_MIN, Balans.KOLEJKA_PRZERWA_MAX)
+		return
+	# Nowa babcia losuje się co kilkadziesiąt sekund, ale nigdy w trakcie
+	# transakcji gracza - przerwanie liczenia bębnów byłoby zwykłą złośliwością
+	_do_nowej_babci -= delta
+	if _do_nowej_babci <= 0.0 and not _liczy:
+		_do_nowej_babci = randf_range(Balans.KOLEJKA_PRZERWA_MIN, Balans.KOLEJKA_PRZERWA_MAX)
+		if randf() < Balans.SZANSA_KOLEJKI:
+			_ustaw_kolejke(randf_range(Balans.KOLEJKA_MIN, Balans.KOLEJKA_MAX))
+
+func _ustaw_kolejke(sekundy: float) -> void:
+	_kolejka = sekundy
+	if is_instance_valid(_babcia):
+		_babcia.visible = sekundy > 0.0
 
 ## Cios pięścią w butelkomat. Zapchany - pomaga. Sprawny - może się zapchać.
 func oberwij(_gracz: Node3D) -> void:
@@ -83,14 +132,63 @@ func _zbuduj_bryle() -> void:
 	kolizja.position = Vector3(0, 1.1, 0)
 	add_child(kolizja)
 
+## BABCIA W KOLEJCE - prosta sylwetka z siatą, budowana raz i chowana,
+## gdy nikt nie stoi. Kolejka musi być WIDOCZNA z daleka: gracz ma podjąć
+## decyzję "biegnę czy stoję", zanim tam dobiegnie.
+func _zbuduj_babcie() -> void:
+	_babcia = Node3D.new()
+	_babcia.position = Vector3(0, 0, 1.05)   # przed automatem, tyłem do gracza
+	_babcia.visible = false
+	add_child(_babcia)
+	var plaszcz := MeshInstance3D.new()
+	var stozek := CylinderMesh.new()
+	stozek.top_radius = 0.2
+	stozek.bottom_radius = 0.42
+	stozek.height = 1.15
+	plaszcz.mesh = stozek
+	plaszcz.material_override = _material(Color(0.42, 0.3, 0.45))   # płaszcz w kwiaty
+	plaszcz.position = Vector3(0, 0.58, 0)
+	_babcia.add_child(plaszcz)
+	var glowa := MeshInstance3D.new()
+	var kula := SphereMesh.new()
+	kula.radius = 0.2
+	kula.height = 0.4
+	glowa.mesh = kula
+	glowa.material_override = _material(Color(0.9, 0.76, 0.66))
+	glowa.position = Vector3(0, 1.32, 0)
+	_babcia.add_child(glowa)
+	# Chustka na głowie - bez niej to po prostu stożek
+	var chustka := MeshInstance3D.new()
+	var czasza := SphereMesh.new()
+	czasza.radius = 0.22
+	czasza.height = 0.3
+	chustka.mesh = czasza
+	chustka.material_override = _material(Color(0.8, 0.25, 0.3))
+	chustka.position = Vector3(0, 1.4, -0.02)
+	_babcia.add_child(chustka)
+	# Siata z puszkami - powód, dla którego to potrwa
+	var siata := MeshInstance3D.new()
+	var pudlo_siaty := BoxMesh.new()
+	pudlo_siaty.size = Vector3(0.34, 0.5, 0.28)
+	siata.mesh = pudlo_siaty
+	siata.material_override = _material(Color(0.88, 0.86, 0.55))
+	siata.position = Vector3(0.42, 0.42, 0.1)
+	_babcia.add_child(siata)
+	var podpis := Styl.plakietka("KOLEJKA", 40, Color(1.0, 0.65, 0.6))
+	podpis.position = Vector3(0, 1.78, 0)
+	_babcia.add_child(podpis)
+
 func podpowiedz() -> String:
 	if _zapchany:
 		return "E - KOPNIJ zapchany butelkomat"
+	if _kolejka > 0.0:
+		return "Kolejka (%s): babcia oddaje puszki - jeszcze %d s" % [
+			nazwa_punktu, int(ceilf(_kolejka))]
 	var butelki := Game.ile_w_plecaku("kaucja")
 	if butelki == 0:
 		if Game.ile_w_plecaku("zlom") > 0:
 			return "Butelkomat nie bierze złomu - to na skup do Zdziśka"
-		return "Butelkomat - plecak pusty"
+		return "Butelkomat %s - plecak pusty" % nazwa_punktu
 	return "E - oddaj butelki (%d szt.)" % butelki
 
 var _liczy := false      # blokada podwójnego uruchomienia "bębnów"
@@ -98,6 +196,14 @@ var _zapchany := false   # czasem się zapycha - celowo wnerwia
 
 func interakcja(_gracz: Node3D) -> void:
 	if _liczy:
+		return
+	if _kolejka > 0.0:
+		Sfx.graj("blad", -8.0)
+		Game.pokaz_komunikat([
+			"Babcia: \"Młody, ja tu pierwsza! Mam jeszcze pół siaty.\"",
+			"Kolejka. Babcia liczy puszki po jednej. Zostało %d s." % int(ceilf(_kolejka)),
+			"\"Za mną pan stoi?\" Stoisz. Albo biegniesz do innego automatu.",
+		].pick_random())
 		return
 	if _zapchany:
 		_kopniecie()

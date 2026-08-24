@@ -190,6 +190,7 @@ func _odpusc(gracz_uciekl: bool) -> void:
 	_poza_zasiegiem = 0.0
 	if gracz_uciekl:
 		Game.dodaj_wsiokometr(12.0)   # ucieczka to prestiż osiedlowy
+		Osiagniecia.przyznaj("ucieczka")
 		Sfx.graj("okrzyk2")
 		Game.pokaz_komunikat("Zgubiłeś straż po %d s! Kondycja jak u zawodowca." % int(_czas_poscigu))
 

@@ -199,6 +199,7 @@ func _na_potracenie(cialo: Node3D) -> void:
 		"Zderzenie z blachą. Blacha wygrała.",
 	].pick_random())
 	cialo.gleba()
+	Osiagniecia.zglos("auta")
 	# Wypada część fantów - potoczyły się po asfalcie
 	var zgubione: int = Game.zgub_fanty(2)
 	if zgubione > 0:

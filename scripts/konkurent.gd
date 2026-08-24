@@ -2,6 +2,12 @@ extends CharacterBody3D
 ## KONKURENT-WSIOK "HENIEK" - chodzi po mapie do najbliższych butelek
 ## i je zabiera. Wymusza pośpiech! Na szczęście jest wolniejszy od gracza
 ## i lubi sobie odpocząć. Złotych fantów "nie poznaje" - zostawia je.
+##
+## Od teraz Heniek nie tylko chodzi: KAŻDA zwinięta butelka ma wartość,
+## która ląduje na jego liczniku (Game.konkurent_kasa). Licznik widać obok
+## Twojej kasy przez cały dzień, a na koniec jest rozliczenie "Ty 84 zł /
+## Heniek 71 zł" i osobna premia za wygraną. Rywal, którego widać na
+## tablicy wyników, jest dużo groźniejszy niż rywal, który po prostu chodzi.
 
 const Kolekcjonerski := preload("res://scripts/collectible.gd")
 
@@ -9,6 +15,8 @@ const ZASIEG_ZBIERANIA := 1.3
 
 ## Heniek z każdym dniem kariery jest odrobinę szybszy (trenuje po godzinach)
 var predkosc := Balans.PREDKOSC_HENKA
+
+var _ety_licznik: Label3D      # tabliczka nad głową: "Heniek - 12,50 zł"
 
 const TEKSTY_KRADZIEZY: Array[String] = [
 	"Heniek zwinął butelkę sprzed nosa!",
@@ -76,8 +84,14 @@ func _zbuduj_postac() -> void:
 	add_child(siata)
 	# Imię nad głową - niech gracz wie, kto go okrada
 	var imie := Styl.plakietka("Heniek", 64, Color(1.0, 0.6, 0.6))
-	imie.position = Vector3(0, 2.2, 0)
+	imie.position = Vector3(0, 2.45, 0)
 	add_child(imie)
+	# ...i ile już na tobie zarobił. Sam napis "Heniek" był etykietą;
+	# napis "Heniek - 12,50 zł" jest tablicą wyników.
+	_ety_licznik = Styl.plakietka(Game.zl(Game.konkurent_kasa), 44, Color(1.0, 0.8, 0.55))
+	_ety_licznik.position = Vector3(0, 2.13, 0)
+	add_child(_ety_licznik)
+	Game.rywal_changed.connect(_odswiez_licznik)
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
@@ -150,12 +164,27 @@ func _zbierz_cel() -> void:
 
 func _zakoncz_zbieranie() -> void:
 	_zbiera = false
-	if is_instance_valid(_cel) and _cel.zabierz_przez_konkurenta():
-		# Nie spamujemy - komunikat tylko czasami
-		if randf() < 0.35:
-			Game.pokaz_komunikat(TEKSTY_KRADZIEZY.pick_random())
+	if is_instance_valid(_cel):
+		# Wartość czytamy PRZED zabraniem - po zabraniu fant znika ze sceny
+		var wartosc: float = _cel.wartosc()
+		if _cel.zabierz_przez_konkurenta():
+			Game.konkurent_zebral(wartosc)
+			# Nie spamujemy - komunikat tylko czasami
+			if randf() < 0.35:
+				Game.pokaz_komunikat("%s (Heniek ma już %s)" % [
+					TEKSTY_KRADZIEZY.pick_random(), Game.zl(Game.konkurent_kasa),
+				])
 	_cel = null
 	_odpoczynek = randf_range(4.0, 7.0)   # Heniek celebruje sukces
+
+## Tabliczka nad głową Heńka: jego utarg i to, kto aktualnie prowadzi.
+func _odswiez_licznik(kwota: float, _sztuk: int) -> void:
+	if not is_instance_valid(_ety_licznik):
+		return
+	_ety_licznik.text = Game.zl(kwota)
+	# Czerwony, gdy Heniek prowadzi - jeden rzut oka i wiadomo, jak stoisz
+	_ety_licznik.modulate = Color(1.0, 0.45, 0.4) if kwota > Game.kasa \
+		else Color(0.75, 0.9, 0.75)
 
 ## Cios od gracza: zwykle gubi butelki, ale czasem przypomina sobie boks.
 func oberwij(gracz: Node3D) -> void:

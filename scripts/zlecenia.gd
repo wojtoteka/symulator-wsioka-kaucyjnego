@@ -162,6 +162,7 @@ func _zakoncz(sukces: bool) -> void:
 		Game.dodaj_kase(nagroda)
 		Game.dodaj_wsiokometr(float(dane.get("prestiz", 15.0)))
 		Game.statystyki["zlecenia"] += 1
+		Osiagniecia.zglos("zlecenia")
 		Game.postep_wyzwania("zlecenia")
 		Sfx.graj("zlota")
 		Game.wstrzasnij(0.22)

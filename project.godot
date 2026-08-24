@@ -16,6 +16,7 @@ config/icon="res://icon.svg"
 Game="*res://scripts/game_manager.gd"
 Sfx="*res://scripts/sfx.gd"
 Zlecenia="*res://scripts/zlecenia.gd"
+Osiagniecia="*res://scripts/osiagniecia.gd"
 
 [display]
 

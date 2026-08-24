@@ -105,6 +105,7 @@ func interakcja(_gracz: Node3D) -> void:
 	_przeszukania -= 1
 	_zajety = true
 	Game.statystyki["przeszukane_smietniki"] += 1
+	Osiagniecia.zglos("smietniki")
 	Game.postep_wyzwania("smietniki")
 	Game.postep_zlecenia("smietnik")
 	Game.dodaj_wsiokometr(Balans.WSIOKOMETR_SMIETNIK)   # grzebanie buduje reputację
@@ -119,7 +120,12 @@ func interakcja(_gracz: Node3D) -> void:
 	# a czasem kończy się regularną pogonią przez całe osiedle
 	for straznik in get_tree().get_nodes_in_group("straz"):
 		if straznik.global_position.distance_to(global_position) < Balans.ZASIEG_STRAZY:
-			if randf() < Balans.SZANSA_POSCIGU and straznik.has_method("rozpocznij_poscig"):
+			# ZNAJOMOŚĆ Z OCHRONIARZEM (ulepszenie): żadnej pogoni ani mandatu,
+			# tylko pogadanka. Grzebanie na oczach patrolu przestaje być ryzykiem,
+			# a to zmienia sposób gry, nie liczby.
+			if Game.ma_ochroniarza():
+				Game.pokaz_komunikat("Strażnik kiwa głową: \"Grzeb pan, grzeb. Ale po sobie posprzątaj.\"")
+			elif randf() < Balans.SZANSA_POSCIGU and straznik.has_method("rozpocznij_poscig"):
 				straznik.rozpocznij_poscig("grzebanie w śmietniku")
 			else:
 				Game.zaplac_mandat(Balans.MANDAT_GRZEBANIE, "grzebanie w śmietniku")

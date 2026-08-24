@@ -12,10 +12,29 @@ var _petla_disco: AudioStreamWAV = null       # generowana leniwie
 
 # --- KLASYKI DISCO POLO (music/*.mp3) - odpalają się przy wielkich momentach ---
 # Wrzuć do folderu music/ dowolną liczbę piosenek - gra losuje raz tę, raz tę.
+#
+# A jeśli w music/ NIC nie ma (świeży klon repozytorium - pliki są objęte
+# prawami autorskimi i nie mogą tam leżeć), gra nie zostaje w ciszy: wchodzi
+# WŁASNY, generowany w kodzie kawałek disco polo. Ktoś, kto sklonuje projekt,
+# od razu słyszy grę taką, jaką miała być.
 const KLASYK_START := 30.0  # od której sekundy utworu grać (refren!)
 const KLASYK_CZAS := 15.0   # ile sekund klasyka leci, zanim się wyciszy
 var _klasyk: AudioStreamPlayer
 var _klasyki: Array[AudioStream] = []
+var _petla_deszczu: AudioStreamWAV = null   # generowana leniwie
+
+# --- SYNTETYCZNY KLASYK (fallback, gdy nie ma plików w music/) ---
+const KLASYK_BPM := 132.0
+const KLASYK_TAKTY := 8            # 8 taktów po 4 ćwiartki ≈ 15 s
+## Bas: A - F - C - G, czyli progresja, na której stoi połowa gatunku.
+const KLASYK_BAS: Array[float] = [110.0, 87.31, 130.81, 98.0]
+## Przygrywka - osiem ósemek na takt, cztery takty, potem powtórka.
+const KLASYK_MELODIA: Array = [
+	[440.0, 523.25, 659.25, 523.25, 587.33, 523.25, 493.88, 440.0],
+	[349.23, 440.0, 523.25, 440.0, 523.25, 587.33, 523.25, 440.0],
+	[523.25, 659.25, 783.99, 659.25, 587.33, 523.25, 493.88, 523.25],
+	[392.0, 493.88, 587.33, 493.88, 587.33, 659.25, 587.33, 493.88],
+]
 
 func _ready() -> void:
 	# Pula 10 odtwarzaczy, żeby dźwięki mogły się nakładać
@@ -45,13 +64,16 @@ func _wczytaj_klasyk() -> void:
 				_klasyki.append(strumien)
 
 ## WIELKI MOMENT = KLASYK. Losuje utwór z music/, gra refren i sam się wycisza.
-## Bez plików w music/ - zwykła fanfara (gra działa też bez mp3).
+##
+## Gdy w music/ nie ma ani jednego pliku (a w repozytorium nie ma - to są
+## komercyjne kawałki), wchodzi WŁASNY, syntezowany kawałek disco polo.
+## Generujemy go leniwie, przy pierwszym wielkim momencie: budowa
+## piętnastu sekund dźwięku przy starcie gry byłaby zauważalną zwłoką.
 func odpal_klasyk() -> void:
-	if _klasyki.is_empty():
-		graj("legenda")
-		return
 	if _klasyk.playing:
 		return   # klasyk już leci - nie przerywamy klasyka
+	if _klasyki.is_empty():
+		_klasyki.append(_generuj_klasyk())
 	Game.pokaz_komunikat("Z osiedlowego głośnika leci KLASYK. Głośniej, sąsiad i tak nie śpi!")
 	var strumien: AudioStream = _klasyki.pick_random()
 	# Start od refrenu, ale nie poza końcem utworu (dla krótkich plików)
@@ -212,6 +234,71 @@ func _generuj_disco() -> AudioStreamWAV:
 	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	wav.loop_begin = 0
 	wav.loop_end = n
+	return wav
+
+## SYNTETYCZNY KLASYK - piętnastosekundowy kawałek disco polo złożony
+## z tych samych klocków, co reszta dźwięków w grze.
+##
+## To nie jest zapętlona przygrywka z okna bloku (patrz petla_disco): ta ma
+## budowę utworu - wejście na samym bicie i basie, potem refren z przygrywką
+## i "trąbką" na górze. Chodzi o to, żeby wielki moment brzmiał jak wielki
+## moment, a nie jak dzwonek do drzwi.
+func _generuj_klasyk() -> AudioStreamWAV:
+	var beat := 60.0 / KLASYK_BPM
+	var takt := beat * 4.0
+	var n := int(takt * KLASYK_TAKTY * CZESTOTLIWOSC_PROBKOWANIA)
+	var mix := PackedFloat32Array()
+	mix.resize(n)
+	for t in KLASYK_TAKTY:
+		var start := t * takt
+		var bas: float = KLASYK_BAS[t % KLASYK_BAS.size()]
+		# Stopa na każdą ćwiartkę, hi-hat na "i", klaśnięcie na 2 i 4
+		for c in 4:
+			_wmiksuj(mix, start + c * beat, _ton(85, 45, 0.13, 0.55))
+			_wmiksuj(mix, start + c * beat + beat / 2.0, _szum(0.028, 0.14))
+			if c % 2 == 1:
+				_wmiksuj(mix, start + c * beat, _szum(0.07, 0.24))
+		# Bas ósemkami - motoryka gatunku
+		for o in 8:
+			_wmiksuj(mix, start + o * beat / 2.0, _ton(bas, bas, 0.17, 0.24, "kwadrat"))
+		# Pierwsze dwa takty to samo wejście - przygrywka wchodzi od trzeciego,
+		# dzięki czemu utwór ma moment, w którym "się zaczyna"
+		if t < 2:
+			continue
+		var fraza: Array = KLASYK_MELODIA[t % KLASYK_MELODIA.size()]
+		for o in 8:
+			var nuta: float = fraza[o]
+			_wmiksuj(mix, start + o * beat / 2.0, _ton(nuta, nuta, 0.26, 0.15))
+			# Oktawa wyżej i ciszej - syntetyczna "trąbka" nad melodią
+			if t >= 4:
+				_wmiksuj(mix, start + o * beat / 2.0, _ton(nuta * 2.0, nuta * 2.0, 0.2, 0.06))
+	return _wav(mix)
+
+## Szum deszczu - cztery sekundy filtrowanego szumu w pętli.
+## Bez obwiedni (w przeciwieństwie do _szum), bo deszcz nie ma wybrzmiewać;
+## powolna modulacja głośności robi za podmuchy wiatru.
+func petla_deszczu() -> AudioStreamWAV:
+	if _petla_deszczu != null:
+		return _petla_deszczu
+	var n := 4 * CZESTOTLIWOSC_PROBKOWANIA
+	var probki := PackedFloat32Array()
+	probki.resize(n)
+	var poprzednia := 0.0
+	for i in n:
+		var t := float(i) / n
+		# Mocne filtrowanie dolnoprzepustowe - biały szum brzmi jak zakłócenia,
+		# dopiero przytłumiony zaczyna brzmieć jak woda
+		poprzednia = lerpf(poprzednia, randf_range(-1.0, 1.0), 0.22)
+		# Dwie fale o różnych okresach = podmuchy bez słyszalnego rytmu
+		var podmuch := 0.75 + 0.15 * sin(t * TAU) + 0.1 * sin(t * TAU * 2.7)
+		# Wygładzenie na złączeniu pętli, żeby nie strzelało co cztery sekundy
+		var szew := minf(minf(t, 1.0 - t) * 40.0, 1.0)
+		probki[i] = poprzednia * 0.42 * podmuch * szew
+	var wav := _wav(probki)
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = n
+	_petla_deszczu = wav
 	return wav
 
 ## Dokłada fragment do miksu w podanym punkcie czasu (sekundy).
