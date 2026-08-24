@@ -164,7 +164,7 @@ func _ruch_uliczny() -> void:
 
 ## Butelki i puszki. Liczba i miejsca zależą od dnia tygodnia i pogody:
 ## w sobotę osiedle sprząta po piątkowej imprezie, a w deszczu ludzie
-## dopijają pod wiatami zamiast na ławkach.
+## dopijają pod dachem zamiast na ławkach.
 func rozrzuc_butelki() -> void:
 	# Strefy rozrzutu: (x_min, x_max, z_min, z_max) - środek osiedla i okolice
 	var strefy := [
@@ -186,15 +186,15 @@ func rozrzuc_butelki() -> void:
 				var pozycja := gniazdo + Vector3(cos(kat), 0, sin(kat)) * randf_range(0.4, 2.2)
 				_fant(pozycja, Kolekcjonerski.losowy_typ(Game.mnoznik_szczescia()))
 	# OPAD: kto pije w deszczu, ten pije pod dachem - a zimą tym bardziej.
-	# Miejsca bierzemy wprost z Plan.DACHY, żeby po przesunięciu wiaty łup
+	# Miejsca bierzemy wprost z Plan.DACHY, żeby po przesunięciu daszku łup
 	# nie został na trawie.
 	if Game.mokro():
 		var dokladka := Balans.SNIEG_FANTY_POD_WIATA if Game.snieg() else 0
 		for i in Plan.DACHY.size():
-			var wiata := Plan.srodek_dachu(i)
+			var schronienie := Plan.srodek_dachu(i)
 			for j in randi_range(3 + dokladka, 5 + dokladka):
 				var kat := randf() * TAU
-				var pozycja := wiata + Vector3(cos(kat), 0, sin(kat)) * randf_range(0.5, 1.6)
+				var pozycja := schronienie + Vector3(cos(kat), 0, sin(kat)) * randf_range(0.5, 1.6)
 				# Podcień Biedronki jest PRZYKLEJONY do ściany (bo tak wyglądają
 				# podcienie), więc losowanie wokół jego środka potrafi trafić
 				# w budynek. Zajęte miejsca odrzucamy - fant w ścianie to fant

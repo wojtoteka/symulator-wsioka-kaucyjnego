@@ -1,12 +1,37 @@
 extends StaticBody3D
 ## KIOSK "RUCH" - obowiązkowy element polskiego krajobrazu.
-## E = zdrapka za 3 zł. Zwykle nic, czasem drobne... a raz na sto -
-## JACKPOT 100 zł i sława na całe osiedle.
+##
+## E = kup wybraną pozycję, F = przełącz towar (tak samo jak w automacie
+## z napojami - jeden nawyk na całą grę).
+##
+## W ofercie dwie rzeczy i celowo są swoimi przeciwieństwami:
+##   - ZDRAPKA za 3 zł to czysty hazard: wydajesz i czekasz, co wylosuje.
+##   - PACZKA SZLUGÓW za 9 zł to zakup, który coś ROBI - zapalony szlug
+##     zatrzymuje spadek Wsiokometru, czyli daje narzędzie do zaplanowania
+##     TRYBU WSIOKA. Kiosk z samą zdrapką był automatem do losowania;
+##     kiosk z paczką jest miejscem, do którego idzie się w konkretnym celu.
+
+## Nie "const": Balans.zl() i formatowanie liczą się dopiero przy tworzeniu
+## obiektu, a stała w GDScript musi być policzalna w czasie kompilacji.
+var TOWAR: Array[Dictionary] = [
+	{
+		"id": "zdrapka", "nazwa": "zdrapka", "cena": Balans.CENA_ZDRAPKI,
+		"opis": "los na loterii osiedlowej",
+	},
+	{
+		"id": "szlugi", "nazwa": "paczka szlugów", "cena": Balans.CENA_PACZKI,
+		"opis": "%d szt., Q = zapal (Wsiokometr stoi, ale nie ma sprintu)" % Balans.SZLUGI_W_PACZCE,
+	},
+]
+
+var _wybor := 0
+var _etykieta_towaru: Label3D
 
 func _ready() -> void:
 	add_to_group("interakcja")
 	add_to_group("bijalne")
 	_zbuduj_bryle()
+	_odswiez()
 
 ## Materiał w stylu gry (toon + kontur) - patrz scripts/styl.gd.
 func _material(kolor: Color, emisja := false) -> StandardMaterial3D:
@@ -41,6 +66,11 @@ func _zbuduj_bryle() -> void:
 	var szyld := Styl.szyld("KIOSK", 96, Color(1.0, 0.9, 0.3))
 	szyld.position = Vector3(0, 2.85, 0.92)
 	add_child(szyld)
+	# Kartka z aktualnie wybranym towarem - bez niej gracz musiałby podejść
+	# i przeczytać podpowiedź, żeby w ogóle wiedzieć, że kiosk ma dwie rzeczy
+	_etykieta_towaru = Styl.plakietka("", 44, Color(1.0, 0.95, 0.8))
+	_etykieta_towaru.position = Vector3(0, 3.25, 0)
+	add_child(_etykieta_towaru)
 	# Kolizja
 	var kolizja := CollisionShape3D.new()
 	var ksztalt := BoxShape3D.new()
@@ -49,10 +79,35 @@ func _zbuduj_bryle() -> void:
 	kolizja.position = Vector3(0, 1.25, 0)
 	add_child(kolizja)
 
+func _odswiez() -> void:
+	var pozycja: Dictionary = TOWAR[_wybor]
+	_etykieta_towaru.text = "%s - %s" % [pozycja["nazwa"], Game.zl(pozycja["cena"])]
+
 func podpowiedz() -> String:
-	return "E - kup zdrapkę (%s)" % Game.zl(Balans.CENA_ZDRAPKI)
+	var pozycja: Dictionary = TOWAR[_wybor]
+	return "E - %s (%s, %s)  |  F - następny" % [
+		pozycja["nazwa"], Game.zl(pozycja["cena"]), pozycja["opis"],
+	]
 
 func interakcja(_gracz: Node3D) -> void:
+	if TOWAR[_wybor]["id"] == "szlugi":
+		_kup_paczke()
+		return
+	_kup_zdrapke()
+
+## PACZKA SZLUGÓW - jedyna rzecz w grze, którą kupuje się na zapas: paczka
+## przechodzi na następny dzień, bo to zakup, a nie dzienny zasób.
+func _kup_paczke() -> void:
+	if not Game.kup_paczke():
+		Sfx.graj("blad")
+		Game.pokaz_komunikat("Kioskarka: \"Na kredyt to u sąsiada. Paczka kosztuje %s.\"" %
+			Game.zl(Balans.CENA_PACZKI))
+		return
+	Sfx.graj("kasa")
+	Game.pokaz_komunikat("Paczka kupiona (%d szt.). Q - zapal. Wsiokometr wtedy stoi w miejscu." %
+		Game.szlugi)
+
+func _kup_zdrapke() -> void:
 	if not Game.wydaj_kase(Balans.CENA_ZDRAPKI):
 		Sfx.graj("blad")
 		Game.pokaz_komunikat("Kioskarka: \"Bez pieniędzy to jest gazetka za darmo. Ta stara.\"")
@@ -84,7 +139,12 @@ func interakcja(_gracz: Node3D) -> void:
 		Sfx.graj("blad", -6.0)
 		Game.pokaz_komunikat("Nic. \"Następnym razem\" - napisała zdrapka. Kłamie.")
 
-## Cios w kiosk - bez szans.
+## F - przełączenie towaru. Kiosk jest w grupie "bijalne", więc trafia tu to
+## samo wciśnięcie, którym gracz "zwraca uwagę" Heńkowi - i dobrze, bo to ten
+## sam nawyk, co przy automacie z napojami.
 func oberwij(_gracz: Node3D) -> void:
-	Sfx.graj("brzek", -8.0)
-	Game.pokaz_komunikat("Szyba pancerna. Kioskarka nawet nie mrugnęła.")
+	_wybor = (_wybor + 1) % TOWAR.size()
+	_odswiez()
+	Sfx.graj("brzek", -12.0)
+	Game.pokaz_komunikat("Szyba pancerna, kioskarka nawet nie mrugnęła - ale wyłożyła inny towar.")
+	Game.ustaw_prompt(podpowiedz())

@@ -20,6 +20,8 @@ var _panel_konca: CenterContainer
 var _panel_menu: Control
 var _panel_pauzy: Control
 var _panel_ustawien: Control
+var _przycisk_kasowania: Button    # "SKASUJ KARIERĘ" - pyta dwa razy
+var _kasowanie_uzbrojone := false
 var _zaslona: ColorRect        # czarna zasłona do przejść fade
 var _nakladka: ColorRect       # kolorowy filtr upojenia/kaca
 var _ety_tutorial: Label
@@ -43,6 +45,9 @@ var _wiersz_czasu: HBoxContainer   # zegar u góry (chowany po dzwonku)
 var _wiersz_magnesu: HBoxContainer # bateria magnesu (tylko gdy jest ulepszenie)
 var _ety_magnes: Label
 var _pasek_magnesu: ColorRect
+var _wiersz_szlugow: HBoxContainer  # paczka z kiosku (tylko gdy jakaś jest)
+var _ety_szlugi: Label
+var _pasek_szluga: ColorRect
 var _panel_ksiegi: Control         # KSIĘGA WSIOKA - pełna lista osiągnięć
 var _lista_ksiegi: VBoxContainer
 var _ety_ksiega_licznik: Label
@@ -73,6 +78,7 @@ func _ready() -> void:
 	Game.tryb_wsioka_changed.connect(_aktualizuj_tryb_wsioka)
 	Game.rywal_changed.connect(_aktualizuj_rywala)
 	Game.magnes_changed.connect(_aktualizuj_magnes)
+	Game.szlugi_changed.connect(_aktualizuj_szlugi)
 	# Stan wyzwania na starcie sceny
 	if not Game.wyzwanie.is_empty():
 		_aktualizuj_wyzwanie(
@@ -297,6 +303,14 @@ func _zbuduj() -> void:
 	_wiersz_magnesu.visible = Game.ma_magnes()
 	_pasek_magnesu.get_parent().visible = Game.ma_magnes()
 	_aktualizuj_magnes(Game.magnes_bateria, Balans.MAGNES_BATERIA)
+	# PACZKA SZLUGÓW - licznik sztuk, a przy zapalonym szlugu pasek odliczający
+	# sekundy zatrzymanego Wsiokometru. Wiersz pojawia się dopiero po zakupie:
+	# do tego czasu byłby stałym "0 szt.", czyli szumem.
+	_ety_szlugi = _etykieta("Szlugi", 16, Color(1.0, 0.8, 0.55))
+	_wiersz_szlugow = _wiersz("papieros", _ety_szlugi)
+	lewy.add_child(_wiersz_szlugow)
+	_pasek_szluga = _pasek(lewy, Color(1.0, 0.55, 0.15))
+	_aktualizuj_szlugi(Game.szlugi, Game.szlug)
 
 	# Lewa krawędź, pod panelem głównym: AKTYWNE ZLECENIE (ukryte, gdy brak)
 	_panel_zlecenia = PanelContainer.new()
@@ -455,7 +469,7 @@ func _zbuduj_menu() -> void:
 	kolumna.add_child(_etykieta("", 8))
 	var sterowanie := _etykieta(
 		"WASD - ruch | Mysz - kamera | E - interakcja | F - nawal komuś | Spacja - skok\n" +
-		"Shift - sprint (zużywa Papierosa) | Ctrl - przysiad | V - kamera | Esc - pauza\n" +
+		"Shift - sprint | Ctrl - przysiad | Q - szlug | V - kamera | Esc - pauza\n" +
 		"Głaszcz psa, podciągaj się na trzepaku, kup piwo w Biedronce. Żyj pełnią życia.",
 		16, Color(0.7, 0.7, 0.7)
 	)
@@ -488,14 +502,25 @@ func _zbuduj_pauze() -> void:
 	kolumna.add_child(_przycisk("PEŁNY EKRAN (F11)", _przelacz_pelny_ekran))
 	kolumna.add_child(_przycisk("WYJDŹ", _wyjdz))
 
-## Panel ustawień: głośność, czułość myszy, pełny ekran.
+## PANEL USTAWIEŃ.
+##
+## Do niedawna miał trzy pozycje (głośność, czułość, pełny ekran) i był raczej
+## deklaracją, że ustawienia istnieją, niż ustawieniami. Wszystko, co tu jest
+## teraz, ma jedną wspólną cechę: zmienia coś, co gracz WIDZI albo CZUJE od
+## razu - i da się to wyłączyć, gdy przeszkadza. Dlatego doszły osobna głośność
+## muzyki (disco polo na cały regulator bawi raz, a gra się w to godzinami),
+## pole widzenia, wstrząsy kamery, odwrócona oś Y, strzałka nawigacji
+## i podpowiedzi. Na dole - jedyne nieodwracalne miejsce w grze.
+##
+## Układ jest DWUKOLUMNOWY, bo dziewięć pozycji w jednej kolumnie nie mieści
+## się na 720p i panel zaczynałby się przewijać.
 func _zbuduj_ustawienia() -> void:
 	_panel_ustawien = Control.new()
 	_panel_ustawien.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_panel_ustawien.visible = false
 	_korzen.add_child(_panel_ustawien)
 	var tlo := ColorRect.new()
-	tlo.color = Paleta.UI_TLO
+	tlo.color = Color(0.04, 0.06, 0.09, 0.99)
 	tlo.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_panel_ustawien.add_child(tlo)
 	var srodek := CenterContainer.new()
@@ -507,43 +532,131 @@ func _zbuduj_ustawienia() -> void:
 	var naglowek := _etykieta("USTAWIENIA", 36, Paleta.UI_ZLOTY)
 	naglowek.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	kolumna.add_child(naglowek)
-	# Głośność
-	kolumna.add_child(_etykieta("Głośność", 20))
-	var suwak_glosnosci := HSlider.new()
-	suwak_glosnosci.min_value = 0.0
-	suwak_glosnosci.max_value = 1.0
-	suwak_glosnosci.step = 0.05
-	suwak_glosnosci.value = Game.glosnosc
-	suwak_glosnosci.custom_minimum_size = Vector2(280, 24)
-	suwak_glosnosci.value_changed.connect(func(v: float) -> void:
-		Game.ustaw_glosnosc(v)
-		Game.zapisz_ustawienia()
-	)
-	kolumna.add_child(suwak_glosnosci)
-	# Czułość myszy
-	kolumna.add_child(_etykieta("Czułość myszy", 20))
-	var suwak_czulosci := HSlider.new()
-	suwak_czulosci.min_value = 0.4
-	suwak_czulosci.max_value = 2.0
-	suwak_czulosci.step = 0.1
-	suwak_czulosci.value = Game.czulosc
-	suwak_czulosci.custom_minimum_size = Vector2(280, 24)
-	suwak_czulosci.value_changed.connect(func(v: float) -> void:
-		Game.czulosc = v
-		Game.zapisz_ustawienia()
-	)
-	kolumna.add_child(suwak_czulosci)
-	# Pełny ekran
-	var przelacznik := CheckButton.new()
-	przelacznik.text = "Pełny ekran"
-	przelacznik.add_theme_font_size_override("font_size", 20)
-	przelacznik.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-	przelacznik.toggled.connect(func(_wlaczony: bool) -> void: _przelacz_pelny_ekran())
-	kolumna.add_child(przelacznik)
+
+	var kolumny := HBoxContainer.new()
+	kolumny.add_theme_constant_override("separation", 46)
+	kolumny.alignment = BoxContainer.ALIGNMENT_CENTER
+	kolumna.add_child(kolumny)
+	var lewa := VBoxContainer.new()
+	lewa.add_theme_constant_override("separation", 6)
+	kolumny.add_child(lewa)
+	var prawa := VBoxContainer.new()
+	prawa.add_theme_constant_override("separation", 6)
+	kolumny.add_child(prawa)
+
+	# --- DŹWIĘK ---
+	lewa.add_child(_naglowek_sekcji("DŹWIĘK"))
+	_suwak(lewa, "Głośność efektów", Game.glosnosc, 0.0, 1.0, 0.05,
+		func(v: float) -> String: return "%d%%" % int(round(v * 100.0)),
+		func(v: float) -> void:
+			Game.ustaw_glosnosc(v)
+			Game.zapisz_ustawienia())
+	_suwak(lewa, "Muzyka (klasyk z okna)", Game.glosnosc_muzyki, 0.0, 1.0, 0.05,
+		func(v: float) -> String: return "wyłączona" if v <= 0.0 else "%d%%" % int(round(v * 100.0)),
+		func(v: float) -> void:
+			Game.ustaw_glosnosc_muzyki(v)
+			Game.zapisz_ustawienia())
+
+	# --- STEROWANIE ---
+	lewa.add_child(_etykieta("", 8))
+	lewa.add_child(_naglowek_sekcji("STEROWANIE"))
+	_suwak(lewa, "Czułość myszy", Game.czulosc, 0.4, 2.0, 0.1,
+		func(v: float) -> String: return "%.1fx" % v,
+		func(v: float) -> void:
+			Game.czulosc = v
+			Game.zapisz_ustawienia())
+	_przelacznik(lewa, "Odwrócona oś Y", Game.odwroc_os_y,
+		func(wlaczony: bool) -> void:
+			Game.odwroc_os_y = wlaczony
+			Game.zapisz_ustawienia())
+
+	# --- OBRAZ ---
+	prawa.add_child(_naglowek_sekcji("OBRAZ"))
+	_suwak(prawa, "Pole widzenia", Game.pole_widzenia, 60.0, 100.0, 1.0,
+		func(v: float) -> String: return "%d°" % int(v),
+		func(v: float) -> void:
+			Game.ustaw_pole_widzenia(v)
+			Game.zapisz_ustawienia())
+	_przelacznik(prawa, "Wstrząsy kamery", Game.wstrzasy,
+		func(wlaczony: bool) -> void:
+			Game.wstrzasy = wlaczony
+			Game.zapisz_ustawienia())
+	var pelny := _przelacznik(prawa, "Pełny ekran",
+		DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN,
+		func(_wlaczony: bool) -> void: _przelacz_pelny_ekran())
+
+	# --- INTERFEJS ---
+	prawa.add_child(_etykieta("", 8))
+	prawa.add_child(_naglowek_sekcji("INTERFEJS"))
+	_przelacznik(prawa, "Strzałka nawigacji", Game.strzalka,
+		func(wlaczony: bool) -> void:
+			Game.strzalka = wlaczony
+			Game.zapisz_ustawienia())
+	_przelacznik(prawa, "Podpowiedzi na start", Game.podpowiedzi,
+		func(wlaczony: bool) -> void:
+			Game.podpowiedzi = wlaczony
+			Game.zapisz_ustawienia())
+
 	kolumna.add_child(_etykieta("", 6))
 	kolumna.add_child(_przycisk("WRÓĆ", func() -> void: _panel_ustawien.visible = false))
+	# KASOWANIE KARIERY - jedyne nieodwracalne miejsce w grze, więc pyta dwa
+	# razy. Przycisk sam wraca do stanu wyjściowego przy zamknięciu panelu,
+	# żeby "prawie kliknięte" nie czekało uzbrojone do następnego wejścia.
+	_przycisk_kasowania = _przycisk("SKASUJ KARIERĘ", _kasuj_kariere)
+	_przycisk_kasowania.add_theme_color_override("font_color", Paleta.UI_CZERWONY)
+	kolumna.add_child(_przycisk_kasowania)
+	pelny.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+
+## Nagłówek sekcji w panelu ustawień.
+func _naglowek_sekcji(tekst: String) -> Label:
+	return _etykieta(tekst, 17, Color(0.55, 0.75, 0.95))
+
+## Suwak z podpisem i AKTUALNĄ WARTOŚCIĄ. Sam suwak bez liczby obok to zgadywanka:
+## "czułość myszy" ustawiona na oko trzeba potem szukać po omacku.
+## "opis" formatuje wartość na tekst, "akcja" wykonuje zmianę.
+func _suwak(gdzie: VBoxContainer, nazwa: String, wartosc: float, od: float, do_: float,
+		krok: float, opis: Callable, akcja: Callable) -> void:
+	var podpis := _etykieta("%s: %s" % [nazwa, opis.call(wartosc)], 18)
+	gdzie.add_child(podpis)
+	var suwak := HSlider.new()
+	suwak.min_value = od
+	suwak.max_value = do_
+	suwak.step = krok
+	suwak.value = wartosc
+	suwak.custom_minimum_size = Vector2(290, 22)
+	suwak.value_changed.connect(func(v: float) -> void:
+		podpis.text = "%s: %s" % [nazwa, opis.call(v)]
+		akcja.call(v))
+	gdzie.add_child(suwak)
+
+## Przełącznik w jednolitym stylu.
+func _przelacznik(gdzie: VBoxContainer, nazwa: String, wlaczony: bool,
+		akcja: Callable) -> CheckButton:
+	var przycisk := CheckButton.new()
+	przycisk.text = nazwa
+	przycisk.add_theme_font_size_override("font_size", 18)
+	przycisk.button_pressed = wlaczony
+	przycisk.toggled.connect(akcja)
+	gdzie.add_child(przycisk)
+	return przycisk
+
+## Kasowanie kariery na dwa kliknięcia. Pierwsze uzbraja, drugie wykonuje.
+func _kasuj_kariere() -> void:
+	if not _kasowanie_uzbrojone:
+		_kasowanie_uzbrojone = true
+		_przycisk_kasowania.text = "NA PEWNO? KLIKNIJ JESZCZE RAZ"
+		return
+	_kasowanie_uzbrojone = false
+	_przycisk_kasowania.text = "SKASUJ KARIERĘ"
+	_panel_ustawien.visible = false
+	_panel_pauzy.visible = false
+	_wykonaj_przejscie(Game.restart_kariery)
 
 func _pokaz_ustawienia() -> void:
+	# Rozbrajamy kasowanie kariery: "prawie kliknięte" nie ma prawa czekać
+	# uzbrojone do następnego wejścia w panel
+	_kasowanie_uzbrojone = false
+	_przycisk_kasowania.text = "SKASUJ KARIERĘ"
 	_panel_ustawien.visible = true
 
 ## KSIĘGA WSIOKA - pełna lista osiągnięć z postępem.
@@ -673,7 +786,7 @@ func _nowy_dzien_z_przejsciem() -> void:
 
 ## Krótki tutorial przy pierwszej rozgrywce - kolejne podpowiedzi u dołu.
 func _tutorial() -> void:
-	if not Game.pierwszy_dzien:
+	if not Game.pierwszy_dzien or not Game.podpowiedzi:
 		return
 	var podpowiedzi: Array[String] = [
 		"WASD - poruszanie się | mysz - kamera",
@@ -684,6 +797,7 @@ func _tutorial() -> void:
 		"Skup zamyka się przed końcem dnia - nie zostań z felgą w plecaku!",
 		"Tablica ogłoszeń przy chodniku = ZLECENIA za grubszą kasę (F zmienia kartkę)",
 		"Wózek i skuter: Ctrl w zakręcie = DRIFT, a rampy przy garażach dają bonus za lot",
+		"Kiosk sprzedaje PACZKĘ SZLUGÓW - Q zapala, a Wsiokometr wtedy nie spada",
 		"Radar w prawym dolnym rogu: zielone = punkty oddania, czerwone = straż",
 	]
 	await get_tree().create_timer(2.0, false).timeout
@@ -725,7 +839,7 @@ func _pokaz_intro() -> void:
 	# się dopiero z rachunku na koniec.
 	var intro := _etykieta(
 		"Zbieraj butelki i puszki (E), przeszukuj śmietniki\n" +
-		"i zanieś łup do butelkomatu - są trzy na osiedlu!\n" +
+		"i zanieś łup do BUTELKOMATU przy Biedronce (E w kolejce = wpychasz się)\n" +
 		Game.opis_dnia(),
 		22
 	)
@@ -840,6 +954,24 @@ func _aktualizuj_magnes(sekundy: float, maks: float) -> void:
 	var kolor := Paleta.UI_CZERWONY if na_resztkach else Color(0.45, 0.8, 1.0)
 	_pasek_magnesu.color = kolor
 	_ety_magnes.add_theme_color_override("font_color", kolor)
+
+## PACZKA SZLUGÓW. Dwie informacje w jednym wierszu: ile zostało sztuk
+## (to jest zasób) i ile sekund jeszcze pali się ten zapalony (to jest okno,
+## w którym Wsiokometr stoi w miejscu). Bez drugiej połowy gracz nie wiedziałby,
+## kiedy zdążyć z serią - a po to się szluga zapala.
+func _aktualizuj_szlugi(sztuk: int, sekundy: float) -> void:
+	if _pasek_szluga == null:
+		return
+	var pokaz := sztuk > 0 or sekundy > 0.0
+	_wiersz_szlugow.visible = pokaz
+	_pasek_szluga.get_parent().visible = pokaz and sekundy > 0.0
+	if not pokaz:
+		return
+	if sekundy > 0.0:
+		_ety_szlugi.text = "Szlug: %d s (Wsiokometr stoi)" % int(ceilf(sekundy))
+		_pasek_szluga.size.x = (SZEROKOSC_PASKA - 4) * clampf(sekundy / Balans.SZLUG_CZAS, 0.0, 1.0)
+	else:
+		_ety_szlugi.text = "Szlugi: %d szt. (Q)" % sztuk
 
 ## Combo: napis rośnie i puchnie z każdym poziomem.
 func _aktualizuj_combo(poziom: int, mnoznik: int) -> void:

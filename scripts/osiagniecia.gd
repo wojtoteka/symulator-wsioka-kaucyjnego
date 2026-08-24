@@ -75,7 +75,9 @@ const LISTA: Array[Dictionary] = [
 	{"id": "deszcz", "nazwa": "Pogoda nie przeszkadza", "opis": "Wyrób cel dnia w deszczu"},
 	{"id": "sobota", "nazwa": "Sprzątanie po imprezie", "opis": "Wyrób cel dnia w sobotę"},
 	{"id": "snieg", "nazwa": "Zimowy wsiok", "opis": "Wyrób cel dnia podczas śnieżycy"},
-	{"id": "objazd", "nazwa": "Objazd osiedla", "opis": "Oddaj butelki we wszystkich trzech automatach jednego dnia"},
+	{"id": "wepchniety", "nazwa": "Bez kolejki", "opis": "Wepchnij się przed babcię i wyjdź z tego cało"},
+	{"id": "palacz", "nazwa": "Pół paczki dziennie", "opis": "Zapal 25 szlugów",
+		"licznik": "szlugi", "prog": 25},
 	{"id": "bateria", "nazwa": "Bateria z bazaru", "opis": "Wypstrykaj magnes do zera"},
 	{"id": "rywal", "nazwa": "Lepszy od Heńka", "opis": "Zakończ dzień z wyższym utargiem niż Heniek"},
 ]
@@ -167,6 +169,15 @@ func opis_postepu(id: String) -> String:
 ## Reset licznika "co dziś zdobyte" - wołany przy starcie nowego dnia.
 func nowy_dzien() -> void:
 	zdobyte_dzis.clear()
+
+## Wyczyszczenie całej Księgi - wołane tylko przez Game.skasuj_kariere(),
+## czyli z panelu ustawień, po dwukrotnym potwierdzeniu.
+func skasuj() -> void:
+	zdobyte.clear()
+	zdobyte_dzis.clear()
+	postep = {}
+	_kolejka.clear()
+	_zapisz()
 
 # --- Toast ---
 

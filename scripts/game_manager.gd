@@ -23,6 +23,8 @@ signal zlecenie_changed(dane: Dictionary)            # aktywne zlecenie z tablic
 signal tryb_wsioka_changed(aktywny: bool, pozostalo: float)   # Wsiokometr 100%
 signal rywal_changed(kwota: float, sztuk: int)       # licznik Heńka obok Twojego
 signal magnes_changed(sekundy: float, maks: float)   # bateria magnesu na butelki
+signal szlugi_changed(sztuk: int, sekundy: float)    # paczka z kiosku + zapalony szlug
+signal ustawienia_changed()                          # gracz przestawił coś w ustawieniach
 
 # --- Ustawienia rundy (wartości w scripts/balans.gd) ---
 const CZAS_RUNDY := Balans.CZAS_RUNDY
@@ -88,8 +90,19 @@ var skup_otwarty := true       # zamyka się przed końcem dnia - zdąż!
 var tryb_narzedziowy := false
 
 var pierwszy_dzien := true     # tutorial tylko przy pierwszej rozgrywce
-var glosnosc := 1.0            # ustawienia gracza (0-1)
+
+# --- USTAWIENIA GRACZA (user://ustawienia.cfg) ---
+# Panel miał trzy pozycje i był raczej deklaracją, że ustawienia istnieją, niż
+# ustawieniami. Wszystko poniżej ma jedną wspólną cechę: zmienia coś, co gracz
+# WIDZI albo CZUJE od razu - i da się to wyłączyć, gdy przeszkadza.
+var glosnosc := 1.0            # efekty (0-1)
+var glosnosc_muzyki := 1.0     # disco polo z okna - osobno, bo nie każdy chce
 var czulosc := 1.0             # mnożnik czułości myszy
+var odwroc_os_y := false       # dla grających "jak w samolocie"
+var pole_widzenia := 75.0      # FOV kamery (60-100)
+var wstrzasy := true           # screen shake przy jacku, glebie i potrąceniu
+var strzalka := true           # strzałka nawigacji prowadząca do celu
+var podpowiedzi := true        # pasek tutoriala na dole ekranu
 
 # --- KARIERA (utrzymuje się między dniami i między uruchomieniami gry) ---
 var dzien := 1
@@ -290,18 +303,46 @@ func zuzyj_magnes(delta: float) -> void:
 		_magnes_ostrzezony = true
 		pokaz_komunikat("Magnes słabnie - zostało %d s. Butelkomat ładuje." % int(ceilf(magnes_bateria)))
 
-## Punkty oddania odwiedzone dzisiaj - do osiągnięcia "Objazd osiedla"
-## i do tego, żeby krążenie między automatami miało ślad w grze.
-var punkty_dnia: Array[String] = []
+# --- PACZKA SZLUGÓW ---
+# Wsiokometr ucieka cały czas, więc dobicie do 100% wymaga nieprzerwanej serii -
+# a seria bywa przerwana przez rzeczy, na które nie masz wpływu (kolejka,
+# zapchany automat, Straż Miejska). Zapalony szlug ZATRZYMUJE ten spadek na
+# kilkanaście sekund. To pierwsze narzędzie w grze, którym TRYB WSIOKA da się
+# zaplanować zamiast na niego trafić - i dlatego kosztuje: przy fajce nie ma
+# sprintu, a "Papieros" ledwo się regeneruje.
 
-## Butelkomat melduje udaną transakcję. Trzy różne punkty jednego dnia to
-## dokładnie ta gra, o którą chodzi przy zmęczeniu automatów.
-func zanotuj_punkt(nazwa: String) -> void:
-	if punkty_dnia.has(nazwa):
-		return
-	punkty_dnia.append(nazwa)
-	if punkty_dnia.size() >= 3:
-		Osiagniecia.przyznaj("objazd")
+## Ile szlugów zostało w paczce (przechodzi na następny dzień - to jest rzecz,
+## którą się KUPIŁO, a nie dzienny zasób jak bateria magnesu).
+var szlugi := 0
+## Sekundy palenia, jakie zostały z aktualnie zapalonego szluga.
+var szlug := 0.0
+
+## Kiosk sprzedał paczkę.
+func kup_paczke() -> bool:
+	if not wydaj_kase(Balans.CENA_PACZKI):
+		return false
+	szlugi += Balans.SZLUGI_W_PACZCE
+	szlugi_changed.emit(szlugi, szlug)
+	zapisz_kariere()
+	return true
+
+## Czy gracz właśnie pali (pyta o to i gracz, i Wsiokometr).
+func pali_szluga() -> bool:
+	return szlug > 0.0
+
+## Zapalenie szluga (klawisz Q). Zwraca powód odmowy albo pusty tekst.
+func zapal_szluga() -> String:
+	if szlug > 0.0:
+		return "Jeden już się pali. Dwa naraz to już nie styl, tylko desperacja."
+	if szlugi <= 0:
+		return "Paczka pusta. Kiosk ma nową za %s." % zl(Balans.CENA_PACZKI)
+	szlugi -= 1
+	szlug = Balans.SZLUG_CZAS
+	dodaj_wsiokometr(Balans.SZLUG_WSIOKOMETR)
+	szlugi_changed.emit(szlugi, szlug)
+	Osiagniecia.zglos("szlugi")
+	zapisz_kariere()
+	return ""
 
 ## Doładowanie przy butelkomacie (jedna transakcja = jedno ładowanie).
 func doladuj_magnes() -> void:
@@ -334,7 +375,7 @@ func opis_dnia() -> String:
 	# Śnieg przebija dzień tygodnia: zamieć jest ważniejszą informacją niż to,
 	# że Zdzisiek ma promocję na akumulatory.
 	if snieg():
-		return "Zima na osiedlu - sypie, ślisko, a butelki leżą pod wiatami."
+		return "Zima na osiedlu - sypie, ślisko, a butelki leżą pod podcieniem Biedronki."
 	match dzien_tygodnia():
 		Balans.PONIEDZIALEK:
 			return "Poniedziałek - skup płaci marnie, ale i osiedle mniej wymaga."
@@ -615,6 +656,7 @@ func zapisz_kariere() -> void:
 	cfg.load(SCIEZKA_KARIERY)
 	cfg.set_value("kariera", "dzien", dzien)
 	cfg.set_value("kariera", "bank", bank)
+	cfg.set_value("kariera", "szlugi", szlugi)   # kupione, więc przechodzi na jutro
 	for id in ulepszenia:
 		cfg.set_value("ulepszenia", id, ulepszenia[id])
 	cfg.save(SCIEZKA_KARIERY)
@@ -625,6 +667,7 @@ func _wczytaj_kariere() -> void:
 		return
 	dzien = cfg.get_value("kariera", "dzien", 1)
 	bank = cfg.get_value("kariera", "bank", 0.0)
+	szlugi = cfg.get_value("kariera", "szlugi", 0)
 	for id in ulepszenia:
 		ulepszenia[id] = cfg.get_value("ulepszenia", id, 0)
 
@@ -633,7 +676,11 @@ func raportuj_upojenie(pijanstwo: float, kac: float) -> void:
 	upojenie.emit(pijanstwo, kac)
 
 ## Screen shake - kamera gracza nasłuchuje sygnału "wstrzas".
+## Da się wyłączyć w ustawieniach: dla części grających trzęsąca się kamera
+## to nie "czuć jackpot", tylko powód, żeby przestać grać.
 func wstrzasnij(sila: float) -> void:
+	if not wstrzasy:
+		return
 	wstrzas.emit(sila)
 
 ## Prośba o płynne przejście: HUD ściemnia ekran, wykonuje akcję, rozjaśnia.
@@ -646,17 +693,66 @@ func ustaw_glosnosc(v: float) -> void:
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(glosnosc, 0.001)))
 	AudioServer.set_bus_mute(0, glosnosc <= 0.0)
 
+## Muzyka (disco polo z okna) osobno od efektów - klasyk na cały regulator
+## bawi raz, a gra się w to godzinami. Sfx sam czyta stąd wartość przy każdym
+## odpaleniu klasyka: Game jest pierwszym autoloadem, więc w chwili wczytywania
+## ustawień Sfx jeszcze nie istnieje i wołanie go tutaj wywaliłoby grę na starcie.
+func ustaw_glosnosc_muzyki(v: float) -> void:
+	glosnosc_muzyki = clampf(v, 0.0, 1.0)
+
+## Pole widzenia kamery. Gracz zgłasza się po nie sygnałem, bo kamera należy
+## do gracza, a ten może jeszcze nie istnieć, gdy panel się buduje.
+func ustaw_pole_widzenia(v: float) -> void:
+	pole_widzenia = clampf(v, 60.0, 100.0)
+	ustawienia_changed.emit()
+
 func zapisz_ustawienia() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("audio", "glosnosc", glosnosc)
+	cfg.set_value("audio", "muzyka", glosnosc_muzyki)
 	cfg.set_value("sterowanie", "czulosc", czulosc)
+	cfg.set_value("sterowanie", "odwroc_os_y", odwroc_os_y)
+	cfg.set_value("obraz", "pole_widzenia", pole_widzenia)
+	cfg.set_value("obraz", "wstrzasy", wstrzasy)
+	cfg.set_value("interfejs", "strzalka", strzalka)
+	cfg.set_value("interfejs", "podpowiedzi", podpowiedzi)
 	cfg.save(SCIEZKA_USTAWIEN)
+	ustawienia_changed.emit()
 
 func _wczytaj_ustawienia() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SCIEZKA_USTAWIEN) == OK:
-		czulosc = cfg.get_value("sterowanie", "czulosc", 1.0)
-		ustaw_glosnosc(cfg.get_value("audio", "glosnosc", 1.0))
+	if cfg.load(SCIEZKA_USTAWIEN) != OK:
+		return
+	czulosc = cfg.get_value("sterowanie", "czulosc", 1.0)
+	odwroc_os_y = cfg.get_value("sterowanie", "odwroc_os_y", false)
+	pole_widzenia = clampf(cfg.get_value("obraz", "pole_widzenia", 75.0), 60.0, 100.0)
+	wstrzasy = cfg.get_value("obraz", "wstrzasy", true)
+	strzalka = cfg.get_value("interfejs", "strzalka", true)
+	podpowiedzi = cfg.get_value("interfejs", "podpowiedzi", true)
+	ustaw_glosnosc(cfg.get_value("audio", "glosnosc", 1.0))
+	ustaw_glosnosc_muzyki(cfg.get_value("audio", "muzyka", 1.0))
+
+## Skasowanie kariery i start od zera. Nie duplikujemy resetu stanu rundy:
+## dzień ustawiamy na 0, a nowy_dzien() zaraz doda 1 i wyczyści wszystko tak
+## samo jak co rano. Lądujemy dokładnie na dniu 1, jednym torem kodu.
+func restart_kariery() -> void:
+	skasuj_kariere()
+	dzien = 0
+	bank = 0.0
+	nowy_dzien()
+
+## Skasowanie kariery: bank, dzień, ulepszenia i Księga wsioka. Nieodwracalne,
+## więc panel ustawień pyta dwa razy - tutaj tylko wykonujemy.
+func skasuj_kariere() -> void:
+	dzien = 1
+	bank = 0.0
+	szlugi = 0
+	for id in ulepszenia:
+		ulepszenia[id] = 0
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SCIEZKA_KARIERY))
+	Osiagniecia.skasuj()
+	rekord = 0.0
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SCIEZKA_ZAPISU))
 
 func _process(delta: float) -> void:
 	if not gra_trwa or w_menu:
@@ -692,13 +788,20 @@ func _process(delta: float) -> void:
 			tryb_wsioka_changed.emit(true, tryb_wsioka)
 	# Wsiokometr ucieka CAŁY CZAS, a przy staniu w miejscu ucieka szybciej.
 	# (W TRYBIE WSIOKA stoi - szał trwa swoje piętnaście sekund niezależnie
-	# od tego, co robisz.)
-	elif wsiokometr > 0.0:
+	# od tego, co robisz. Przy zapalonym szlugu też stoi - za to się płaci.)
+	elif wsiokometr > 0.0 and szlug <= 0.0:
 		var spadek := Balans.WSIOKOMETR_SPADEK_STALY
 		if _czas_bezczynnosci > 3.0:
 			spadek = Balans.WSIOKOMETR_SPADEK
 		wsiokometr = maxf(wsiokometr - spadek * delta, 0.0)
 		wsiokometr_changed.emit(wsiokometr)
+	# Zapalony szlug: odliczanie i meldunek do HUD-u co klatkę
+	if szlug > 0.0:
+		szlug = maxf(szlug - delta, 0.0)
+		szlugi_changed.emit(szlugi, szlug)
+		if szlug <= 0.0:
+			Sfx.graj("grzebanie", -18.0, 0.7)
+			pokaz_komunikat("Szlug do filtra. Pet w kratkę i wracamy do roboty.")
 	if wsiokometr < 60.0:
 		_legenda_ogloszona = false   # można zostać legendą ponownie
 	# Memy motywacyjne co ~pół minuty
@@ -1038,7 +1141,7 @@ func nowy_dzien() -> void:
 	konkurent_sztuk = 0
 	magnes_bateria = Balans.MAGNES_BATERIA   # noc na ładowarce
 	_magnes_ostrzezony = false
-	punkty_dnia.clear()
+	szlug = 0.0              # paczka zostaje, zapalony szlug nie przeżywa nocy
 	_czas_bezczynnosci = 0.0
 	_legenda_ogloszona = false
 	statystyki = {"zebrane": 0, "oddane": 0, "przeszukane_smietniki": 0, "zlote": 0, "combo_max": 1, "upadki": 0, "mandaty": 0, "zlom": 0, "oddany_zlom": 0, "zlecenia": 0, "loty": 0, "piwa": 0}

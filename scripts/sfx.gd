@@ -22,7 +22,7 @@ const KLASYK_CZAS := 15.0   # ile sekund klasyka leci, zanim się wyciszy
 var _klasyk: AudioStreamPlayer
 var _klasyki: Array[AudioStream] = []
 var _petla_deszczu: AudioStreamWAV = null   # generowana leniwie
-var _petla_dachu: AudioStreamWAV = null     # bębnienie deszczu o blachę wiaty
+var _petla_dachu: AudioStreamWAV = null     # bębnienie deszczu o blachę daszku
 
 # --- SYNTETYCZNY KLASYK (fallback, gdy nie ma plików w music/) ---
 const KLASYK_BPM := 132.0
@@ -71,6 +71,8 @@ func _wczytaj_klasyk() -> void:
 ## Generujemy go leniwie, przy pierwszym wielkim momencie: budowa
 ## piętnastu sekund dźwięku przy starcie gry byłaby zauważalną zwłoką.
 func odpal_klasyk() -> void:
+	if Game.glosnosc_muzyki <= 0.0:
+		return   # muzyka wyciszona w ustawieniach - nie zawracamy głowy komunikatem
 	if _klasyk.playing:
 		return   # klasyk już leci - nie przerywamy klasyka
 	if _klasyki.is_empty():
@@ -80,7 +82,9 @@ func odpal_klasyk() -> void:
 	# Start od refrenu, ale nie poza końcem utworu (dla krótkich plików)
 	var start := minf(KLASYK_START, maxf(strumien.get_length() - KLASYK_CZAS, 0.0))
 	_klasyk.stream = strumien
-	_klasyk.volume_db = 0.0
+	# Suwak "Muzyka" z ustawień. Osobno od efektów, bo disco polo na cały
+	# regulator bawi raz, a w grę gra się godzinami.
+	_klasyk.volume_db = linear_to_db(maxf(Game.glosnosc_muzyki, 0.001))
 	_klasyk.play(start)
 	var tw := create_tween()
 	tw.tween_interval(KLASYK_CZAS)
@@ -302,7 +306,7 @@ func petla_deszczu() -> AudioStreamWAV:
 	_petla_deszczu = wav
 	return wav
 
-## BĘBNIENIE DESZCZU O BLACHĘ - pętla puszczana pod wiatami.
+## BĘBNIENIE DESZCZU O BLACHĘ - pętla puszczana pod zadaszeniem.
 ##
 ## Deszcz na otwartym to szum; deszcz na blaszanym daszku to POJEDYNCZE
 ## uderzenia z krótkim dzwonieniem metalu. Dlatego nie da się tego zrobić

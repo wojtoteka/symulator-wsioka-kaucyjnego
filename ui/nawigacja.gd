@@ -22,7 +22,9 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 
 func _process(delta: float) -> void:
-	visible = not Game.w_menu and Game.gra_trwa
+	# Strzałkę da się wyłączyć w ustawieniach: część grających woli szukać
+	# butelek sama, a strzałka mówiąca "tam" psuje im całą zabawę.
+	visible = Game.strzalka and not Game.w_menu and Game.gra_trwa
 	if not visible:
 		return
 	if not is_instance_valid(_gracz):
@@ -67,11 +69,11 @@ func _wybierz_cel() -> void:
 
 ## Szuka celu po nazwie zwracanej przez nazwa_celu().
 ##
-## Od kiedy butelkomatów jest trzy, "pierwszy z brzegu" przestał wystarczać -
-## strzałka potrafiła prowadzić przez pół mapy do automatu przy Biedronce,
-## gdy dwa metry dalej stał wolny. Wybieramy NAJBLIŻSZY, a punkt z kolejką
-## traktujemy tak, jakby był o 25 m dalej: zwykle opłaca się iść do wolnego,
-## ale gdy stoisz przy zajętym, strzałka nie każe biec na drugi koniec osiedla.
+## Wybieramy NAJBLIŻSZY cel danego rodzaju, a punkt z kolejką traktujemy tak,
+## jakby był o 25 m dalej. Butelkomat jest dziś jeden, więc dla niego ta kara
+## nic nie zmienia - ale reguła zostaje, bo dotyczy każdego rodzaju celu
+## (śmietniki, skup, tablica) i nie chcemy jej odbudowywać, gdy pojawi się
+## drugi punkt czegokolwiek.
 const KARA_ZA_KOLEJKE := 25.0
 
 func _ustaw(nazwa: String, opis: String) -> void:

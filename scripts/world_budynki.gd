@@ -2,7 +2,7 @@ class_name SwiatBudynki
 extends Bryly
 ## BUDOWNICZY ARCHITEKTURY - wszystko, co stoi na fundamencie:
 ## Biedronka z wnętrzem, bloki z balkonami, garaże z rampami,
-## ogródki działkowe ze skupem złomu, punkty butelkomatów i płot mapy.
+## ogródki działkowe ze skupem złomu i płot mapy.
 ##
 ## Wołane raz z world.gd:  SwiatBudynki.new(self).zbuduj()
 
@@ -35,7 +35,6 @@ func zbuduj() -> void:
 	_bloki()
 	_garaze()
 	_dzialki()
-	_butelkomaty_osiedlowe()
 	_plot()
 	_niewidzialne_sciany()
 
@@ -202,12 +201,20 @@ func _bloki() -> void:
 				okno.position = Vector3(-10.95, 2.2 + pietro * 2.2, 24 + wzdluz) if wschodnia \
 					else Vector3(-16 + wzdluz, 2.2 + pietro * 2.2, 19.95)
 				swiat.add_child(okno)
-	# TRANSPARENT na lewym bloku - motto osiedla, widoczne z daleka
-	pudlo(Vector3(-15.8, 6, 4), Vector3(0.15, 1.5, 15), Color(0.96, 0.96, 0.93), false)
+	# TRANSPARENT na lewym bloku - motto osiedla, widoczne z daleka.
+	#
+	# Wisi POD GZYMSEM, nad ostatnim piętrem, i to nie jest kwestia gustu:
+	# na wysokości 6 m przecinał balkony trzeciego piętra na wylot (płyty
+	# sięgają 1,1 m poza ścianę, czyli dokładnie tam, gdzie płótno). Balkony
+	# są na wysokościach 1,22 / 3,82 / 6,42 / 9,02 m i mają metr balustrady,
+	# więc jedyny wolny pas na tej ścianie to przedział 10,0-11,9 m.
+	const WYSOKOSC_TRANSPARENTU := 10.9
+	pudlo(Vector3(-15.8, WYSOKOSC_TRANSPARENTU, 4), Vector3(0.15, 1.5, 15),
+		Color(0.96, 0.96, 0.93), false)
 	var motto := Styl.szyld("NIECH ŻYJE KAUCJA I BEZROBOCIE", 88, Color(0.78, 0.08, 0.08))
 	motto.pixel_size = 0.0075
 	motto.outline_size = 0   # czerwona farba na białym płótnie, obwódka zbędna
-	motto.position = Vector3(-15.68, 6, 4)
+	motto.position = Vector3(-15.68, WYSOKOSC_TRANSPARENTU, 4)
 	motto.rotation.y = PI / 2   # frontem do osiedla
 	swiat.add_child(motto)
 
@@ -351,55 +358,6 @@ func _rampa(pozycja: Vector3, obrot: float, dlugosc: float, wysokosc: float) -> 
 	rampa.position = pozycja
 	rampa.rotation.y = obrot
 	swiat.add_child(rampa)
-
-# =============================================================================
-#  BUTELKOMATY POZA BIEDRONKĄ
-# =============================================================================
-
-## Jeden automat na całą mapę był wąskim gardłem: skoro zapycha się w ponad
-## jednej trzeciej prób, a od dziś potrafi mieć jeszcze kolejkę babć, to
-## gracz z pełnym plecakiem miał dokładnie zero alternatyw. Dwa dodatkowe
-## punkty (pod małym blokiem i na placu garażowym) zamieniają irytację
-## w decyzję: stoję w kolejce czy biegnę czterdzieści metrów dalej?
-##
-## Każdy stoi pod WIATĄ - a wiata to nie tylko dekoracja: w deszczu
-## chowają się pod nią butelki (patrz SwiatNpc.rozrzuc_butelki).
-func _butelkomaty_osiedlowe() -> void:
-	_punkt_z_wiata(Vector3(-8.5, 0, 19.5), 0.0, "pod małym blokiem")
-	_punkt_z_wiata(Vector3(36.0, 0, -13.0), -PI / 2.0, "przy garażach")
-
-## Butelkomat + blaszana wiata. Obrót ustawia automat frontem w stronę,
-## z której nadchodzi gracz.
-##
-## Wiata jest KWADRATOWA (3,4 m) świadomie: przy prostokątnej trzeba by
-## obracać płytę razem z daszkiem i słupkami, a przy kwadracie obrót
-## niczego nie rozjeżdża.
-func _punkt_z_wiata(pozycja: Vector3, obrot: float, nazwa: String) -> void:
-	var automat := Butelkomat.new()
-	automat.nazwa_punktu = nazwa
-	automat.position = pozycja
-	automat.rotation.y = obrot
-	swiat.add_child(automat)
-	# Wektor "w prawo" i "przed siebie" po obrocie o "obrot" wokół osi Y
-	var w_bok := Vector3(cos(obrot), 0, -sin(obrot))
-	var w_przod := Vector3(-sin(obrot), 0, -cos(obrot))
-	var srodek := pozycja + w_przod * 0.5
-	# Płyta chodnikowa pod wiatą - automat nie stoi na trawie
-	pudlo(srodek + Vector3(0, 0.03, 0), Vector3(3.4, 0.06, 3.4),
-		Paleta.CHODNIK, false, false, Styl.teren_szum(Paleta.CHODNIK, 1.1, 0.07))
-	# Cztery słupki (bez kolizji - pod wiatą ma być swobodnie) i daszek
-	for x in [-1.5, 1.5]:
-		for z in [-1.5, 1.5]:
-			walec(srodek + w_bok * x + w_przod * z + Vector3(0, 1.25, 0),
-				0.07, 2.5, Paleta.METAL, false, false, true)
-	var daszek := pudlo(srodek + Vector3(0, 2.6, 0),
-		Vector3(3.8, 0.12, 3.8), Color(0.42, 0.46, 0.5), false, false,
-		Styl.metal(Color(0.42, 0.46, 0.5)))
-	daszek.rotation.z = 0.05
-	# Ławeczka z boku wiaty - dla oczekujących w kolejce
-	var lawka := pudlo(srodek + w_bok * 2.4 + Vector3(0, 0.45, 0),
-		Vector3(0.4, 0.1, 2.0), Paleta.DREWNO)
-	lawka.rotation.y = obrot
 
 # =============================================================================
 #  OGRÓDKI DZIAŁKOWE + SKUP ZŁOMU

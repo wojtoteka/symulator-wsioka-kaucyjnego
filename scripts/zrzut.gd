@@ -23,8 +23,11 @@ const UJECIA: Array = [
 	{"nazwa": "12_automat", "gdzie": Vector3(4.6, 0.2, -24.2), "obrot": 0.0},
 	# Styk działek z obwodnicą - tu płotki wchodziły na asfalt
 	{"nazwa": "11_dzialki_ulica", "gdzie": Vector3(-14, 0.2, 44), "obrot": 250.0},
-	# Wiata z drugim butelkomatem pod małym blokiem
-	{"nazwa": "14_wiata", "gdzie": Vector3(-8.5, 0.2, 25), "obrot": 0.0},
+	# Kiosk RUCH - od teraz sprzedaje też paczkę szlugów
+	{"nazwa": "22_kiosk", "gdzie": Vector3(11.5, 0.2, 9.5), "obrot": 90.0},
+	# Transparent na bloku - wisiał w poprzek balkonów trzeciego piętra, więc
+	# ujęcie musi patrzeć W GÓRĘ: z poziomu chodnika napis jest poza kadrem
+	{"nazwa": "23_transparent", "gdzie": Vector3(2, 0.2, 4), "obrot": 90.0, "pion": 26.0},
 ]
 
 ## Ujęcie do przeglądu pór dnia: widok na osiedle spod Biedronki.
@@ -46,6 +49,12 @@ func _ready() -> void:
 	# czy w ogóle mieści się w panelu. Zapis kariery jest w trybie narzędziowym
 	# zablokowany, więc graczowi nic z tego nie zostaje.
 	Game.ulepszenia["magnes"] = 1
+	# To samo z PACZKĄ SZLUGÓW: wiersz w HUD-zie pojawia się dopiero po zakupie,
+	# więc bez tego nigdy nie trafiłby na zrzut i nikt by nie zobaczył, że się
+	# rozjechał. Dokładamy też zapalonego szluga - pasek odliczania to osobny
+	# stan i też ma się mieścić w panelu.
+	Game.szlugi = Balans.SZLUGI_W_PACZCE
+	Game.szlug = Balans.SZLUG_CZAS
 	await get_tree().process_frame
 	var gracz: Node3D = null
 	var gracze := get_tree().get_nodes_in_group("gracz")
@@ -57,10 +66,27 @@ func _ready() -> void:
 		return
 	# Chwila na złożenie świata i rozjaśnienie ekranu z czerni
 	await get_tree().create_timer(1.2).timeout
+	# Wysięgnik kamery: część ujęć musi patrzeć w górę (transparent pod gzymsem
+	# bloku). Sięgamy po prywatne pole gracza tą samą drogą, co po panele HUD-u -
+	# to narzędzie, a nie gra, i nie ma po co dokładać publicznego API dla zrzutów.
+	var ramie: Variant = gracz.get("_ramie")
+	var wyglad: Variant = gracz.get("_wyglad")
+	var pion_domyslny: float = ramie.rotation.x if ramie != null else 0.0
+	var dlugosc_domyslna: float = ramie.spring_length if ramie != null else 4.0
 	for ujecie in UJECIA:
 		gracz.global_position = ujecie["gdzie"]
 		gracz.rotation.y = deg_to_rad(float(ujecie["obrot"]))
 		gracz.velocity = Vector3.ZERO
+		# Ujęcia "do góry" robimy z PIERWSZEJ OSOBY. W trzeciej wysięgnik o długości
+		# czterech metrów, zadarty pod 26 stopni, wsadza kamerę pod ziemię - i kadr
+		# pokazuje spód trawnika zamiast transparentu.
+		var patrzy_w_gore: bool = ujecie.has("pion")
+		if ramie != null:
+			var pion := deg_to_rad(float(ujecie.get("pion", 0.0)))
+			ramie.rotation.x = pion if patrzy_w_gore else pion_domyslny
+			ramie.spring_length = 0.05 if patrzy_w_gore else dlugosc_domyslna
+		if wyglad != null:
+			wyglad.visible = not patrzy_w_gore
 		# Dwie klatki na przerysowanie + chwila na doczytanie cieni
 		await get_tree().create_timer(0.5).timeout
 		await RenderingServer.frame_post_draw
@@ -81,6 +107,9 @@ func _ready() -> void:
 	await _zrzut_zimy(gracz)
 	# KSIĘGA WSIOKA - sprawdzamy, czy trzydzieści wpisów mieści się na 720p
 	await _zrzut_ksiegi()
+	# USTAWIENIA - panel urósł z trzech pozycji do dziewięciu i dwóch kolumn,
+	# więc "czy się mieści na 720p" przestało być pytaniem retorycznym
+	await _zrzut_ustawien()
 	# Osobne ujęcie z wymuszonymi kreskami pędu (bez tego gracz musiałby jechać)
 	_wymus_motion_lines()
 	await get_tree().create_timer(0.3).timeout
@@ -157,6 +186,21 @@ func _zrzut_ksiegi() -> void:
 	if panel != null:
 		panel.visible = false
 
+## Panel ustawień - ta sama sztuczka, co przy Księdze.
+func _zrzut_ustawien() -> void:
+	var hud := _znajdz_hud()
+	if hud == null:
+		printerr("ZRZUT: nie znalazłem HUD-u - pomijam ustawienia")
+		return
+	hud.call("_pokaz_ustawienia")
+	await get_tree().create_timer(0.5).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/21_ustawienia.png" % KATALOG)
+	print("ZRZUT: 21_ustawienia")
+	var panel: Variant = hud.get("_panel_ustawien")
+	if panel != null:
+		panel.visible = false
+
 func _znajdz_hud() -> Node:
 	for wezel in get_tree().root.find_children("*", "CanvasLayer", true, false):
 		if wezel.get_script() != null and str(wezel.get_script().resource_path).ends_with("hud.gd"):
@@ -181,7 +225,11 @@ func _zmierz_plynnosc() -> void:
 	var suma := 0.0
 	for p in probki:
 		suma += p
-	print("PLYNNOSC: srednio %.0f FPS (probek: %d)" % [suma / probki.size(), probki.size()])
+	# Pogoda W WYNIKU, bo bez niej dwa przebiegi są nieporównywalne: zamieć
+	# kosztuje kilka razy więcej niż słońce i bez tej informacji spadek FPS
+	# wygląda jak regresja kodu (raz już tak było).
+	print("PLYNNOSC: srednio %.0f FPS (probek: %d, pogoda: %s)" % [
+		suma / probki.size(), probki.size(), Game.pogoda])
 
 ## Podkręca efekt pędu na sztywno, żeby dało się go obejrzeć na stojąco.
 ## Trzeba wyłączyć _process, bo inaczej natychmiast wygasi wymuszoną wartość.

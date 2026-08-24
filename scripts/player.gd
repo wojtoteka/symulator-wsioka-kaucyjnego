@@ -55,6 +55,7 @@ var _cwiczy := false              # true = podciąganie na trzepaku
 var siedzi := false               # true = odpoczynek na ławce
 var _wstrzas := 0.0               # siła screen shake'a (wygasa sama)
 var _ostatni_krok := 0            # numer ostatniego kroku (dźwięki kroków)
+var _zar: MeshInstance3D          # żar szluga - po tym widać, że postać pali
 
 const TEKSTY_GLEBY: Array[String] = [
 	"GLEBA! Krawężnik: 1, Ty: 0.",
@@ -77,6 +78,10 @@ func _ready() -> void:
 	Game.backpack_changed.connect(_aktualizuj_plecak)
 	# Screen shake na sygnał (złote fanty, gleby, jackpoty)
 	Game.wstrzas.connect(func(sila: float) -> void: _wstrzas = maxf(_wstrzas, sila))
+	# Żar szluga gaśnie i zapala się razem ze stanem w Game
+	Game.szlugi_changed.connect(func(_sztuk: int, sekundy: float) -> void:
+		if is_instance_valid(_zar):
+			_zar.visible = sekundy > 0.0)
 
 # --- Budowanie wyglądu (proste bryły w stylu "dres i czapka") ---
 
@@ -164,6 +169,21 @@ func _zbuduj_postac() -> void:
 	daszek.position = Vector3(0, 1.8, -0.3)  # -Z to przód postaci
 	_wyglad.add_child(daszek)
 
+	# ŻAR SZLUGA - pomarańczowy punkcik przy ustach. Stan, którego nie widać
+	# na postaci, istnieje tylko na pasku HUD-u; ten punkcik sprawia, że
+	# "pali się" widać też w trzeciej osobie.
+	_zar = MeshInstance3D.new()
+	var kulka_zaru := SphereMesh.new()
+	kulka_zaru.radius = 0.035
+	kulka_zaru.height = 0.07
+	kulka_zaru.radial_segments = 6
+	kulka_zaru.rings = 3
+	_zar.mesh = kulka_zaru
+	_zar.material_override = Styl.bryla(Color(1.0, 0.45, 0.1), 0.0, true)
+	_zar.position = Vector3(0.09, 1.56, -0.3)
+	_zar.visible = false
+	_wyglad.add_child(_zar)
+
 	# Ręce - machają przy chodzeniu (obrót w barku)
 	for strona in [-1.0, 1.0]:
 		var bark := Node3D.new()
@@ -202,8 +222,18 @@ func _zbuduj_kamere() -> void:
 	add_child(_ramie)
 	_kamera = Camera3D.new()
 	_kamera.current = true
+	_kamera.fov = Game.pole_widzenia   # suwak z ustawień
 	_ramie.add_child(_kamera)
 	_ramie.rotation.x = -0.25  # lekko z góry
+	# Gracz przestawił FOV w pauzie - kamera ma to zobaczyć od razu,
+	# a nie dopiero po nowym dniu
+	Game.ustawienia_changed.connect(_zastosuj_ustawienia)
+
+## Zmiana w panelu ustawień. Piwo i tak nadpisuje FOV własną animacją -
+## dlatego bierzemy stąd wartość bazową, a nie stałą 75.
+func _zastosuj_ustawienia() -> void:
+	if is_instance_valid(_kamera) and _piwo <= 0.0:
+		_kamera.fov = Game.pole_widzenia
 
 func _zbuduj_zasieg() -> void:
 	_zasieg = Area3D.new()
@@ -372,9 +402,10 @@ func _unhandled_input(zdarzenie: InputEvent) -> void:
 	if ruch_myszy and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var czulosc: float = CZULOSC_MYSZY * Game.czulosc   # z ustawień gracza
 		rotate_y(-ruch_myszy.relative.x * czulosc)
+		var os_y := -1.0 if Game.odwroc_os_y else 1.0      # "jak w samolocie"
 		var limit_gory := deg_to_rad(80) if pierwsza_osoba else deg_to_rad(35)
 		_ramie.rotation.x = clampf(
-			_ramie.rotation.x - ruch_myszy.relative.y * czulosc,
+			_ramie.rotation.x - ruch_myszy.relative.y * czulosc * os_y,
 			deg_to_rad(-75), limit_gory
 		)
 	# Klik - złap mysz z powrotem (Esc/pauzę obsługuje HUD)
@@ -399,6 +430,9 @@ func _unhandled_input(zdarzenie: InputEvent) -> void:
 	if zdarzenie.is_action_pressed("punch") and Game.gra_trwa \
 			and not lezy and not w_wozku and not _cwiczy:
 		_uderz()
+	# Szlug (Q) - patrz zapal_szluga()
+	if zdarzenie.is_action_pressed("zapal") and Game.gra_trwa and not lezy:
+		zapal_szluga()
 
 func _physics_process(delta: float) -> void:
 	# Grawitacja działa zawsze
@@ -527,14 +561,19 @@ func _fizyka_chodu(delta: float) -> void:
 
 	# Sprint tylko, gdy jest jeszcze "Papieros"
 	var sprintuje := Input.is_action_pressed("sprint") and papieros > 0.0 \
-		and wejscie != Vector2.ZERO and not kuca
+		and wejscie != Vector2.ZERO and not kuca and not Game.pali_szluga()
 	if sprintuje:
 		# "Mocne płuca" (ulepszenie) zmniejszają zużycie
 		papieros = maxf(papieros - PAPIEROS_ZUZYCIE * Game.mnoznik_papierosa() * delta, 0.0)
 	# Regeneracja TYLKO na stojąco ("zapalasz")
 	var pali := predkosc_pozioma < 0.3 and is_on_floor() and papieros < 100.0
 	if pali:
-		papieros = minf(papieros + PAPIEROS_REGENERACJA * delta, 100.0)
+		# Przy zapalonym szlugu "Papieros" ledwo się odbudowuje - to jest cena
+		# za zatrzymany Wsiokometr
+		var tempo := PAPIEROS_REGENERACJA
+		if Game.pali_szluga():
+			tempo *= Balans.SZLUG_REGENERACJA
+		papieros = minf(papieros + tempo * delta, 100.0)
 	Game.ustaw_stamine(papieros, pali)
 
 	var predkosc := PREDKOSC_CHODU
@@ -887,6 +926,23 @@ func teleportuj(pozycja: Vector3, obrot_y: float) -> void:
 	rotation.y = obrot_y
 	velocity = Vector3.ZERO
 
+## SZLUG (Q) - z paczki kupionej w kiosku.
+##
+## Wsiokometr ucieka cały czas, więc dobicie do 100% wymaga nieprzerwanej
+## serii, a serię przerywa mnóstwo rzeczy, na które nie masz wpływu. Zapalony
+## szlug ZATRZYMUJE ten spadek na kilkanaście sekund - to jedyne narzędzie,
+## którym TRYB WSIOKA da się zaplanować zamiast na niego trafić. Cena: przez
+## ten czas nie ma sprintu, a "Papieros" ledwo się odbudowuje.
+func zapal_szluga() -> void:
+	var powod := Game.zapal_szluga()
+	if powod != "":
+		Sfx.graj("blad", -10.0)
+		Game.pokaz_komunikat(powod)
+		return
+	Sfx.graj("grzebanie", -12.0, 1.9)   # pstryk zapalniczki
+	Game.pokaz_komunikat("Szlug zapalony. Wsiokometr stoi, sprint niestety też. Zostało %d szt." %
+		Game.szlugi)
+
 ## Piwo z Biedronki: pełny "Papieros", odwaga... i KUMULACJA.
 ## Każde kolejne piwo wzmacnia efekt, a po zejściu przychodzi KAC.
 func wypij_piwo() -> void:
@@ -941,7 +997,7 @@ func _efekt_piwa(delta: float) -> void:
 		var zejscie := minf(_piwo, 3.0) / 3.0   # efekt łagodnie wygasa pod koniec
 		# Kamera na fali + świat "oddycha" (FOV)
 		_ramie.rotation.z = sin(czas_s * 5.5) * 0.045 * sila * zejscie
-		_kamera.fov = 75.0 + sin(czas_s * 2.6) * 3.5 * sila * zejscie
+		_kamera.fov = Game.pole_widzenia + sin(czas_s * 2.6) * 3.5 * sila * zejscie
 		# Losowa czkawka
 		if randf() < delta * 0.12 * sila:
 			Sfx.graj("czkawka", -5.0, randf_range(0.85, 1.2))
@@ -952,7 +1008,7 @@ func _efekt_piwa(delta: float) -> void:
 		# Zejście: przychodzi kac (jeśli było czym zasłużyć)
 		if _piwo <= 0.0:
 			_ramie.rotation.z = 0.0
-			_kamera.fov = 75.0
+			_kamera.fov = Game.pole_widzenia
 			if _piwa_wypite >= Balans.PIWA_DO_KACA:
 				_kac = Balans.KAC_NA_PIWO * _piwa_wypite
 				Sfx.graj("jek")

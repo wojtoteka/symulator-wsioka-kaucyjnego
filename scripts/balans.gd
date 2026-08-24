@@ -68,15 +68,15 @@ const SZANSA_SNIEGU := 0.34        # dodatkowo, ponad "deszcz zamieniony w śnie
 const SNIEG_PRZYCZEPNOSC := 0.28   # na ubitym śniegu wózek jedzie bokiem
 const SNIEG_HAMOWANIE := 0.4
 const SNIEG_PRZYSPIESZENIE := 0.62
-## Zimą ludzie piją pod wiatami jeszcze chętniej niż w deszczu
+## Zimą ludzie piją pod dachem jeszcze chętniej niż w deszczu
 const SNIEG_FANTY_POD_WIATA := 2
 
 # --- DESZCZ POD DACHEM ---
-# Szum deszczu grał wszędzie tak samo, więc wiaty były tylko bryłą. Pod dachem
+# Szum deszczu grał wszędzie tak samo, więc daszek był tylko bryłą. Pod dachem
 # szum przygasa, a jego miejsce zajmuje bębnienie o blachę - i nagle wiadomo,
 # że się gdzieś schowałeś.
-const DACH_ZASIEG := 2.6           # promień strefy "pod dachem" wokół wiaty
-const DACH_SZUM_DB := -26.0        # przygaszony deszcz na zewnątrz wiaty
+const DACH_ZASIEG := 2.6           # promień strefy "pod dachem" wokół daszku
+const DACH_SZUM_DB := -26.0        # przygaszony deszcz poza zadaszeniem
 const DACH_BEBNIENIE_DB := -11.0   # blacha nad głową
 
 # --- TRYB WSIOKA (Wsiokometr 100%) ---
@@ -88,31 +88,41 @@ const TRYB_WSIOKA_MNOZNIK := 2.0   # podwójna kaucja za wszystko, co podniesies
 const TRYB_WSIOKA_PO := 45.0       # do ilu spada Wsiokometr po zakończeniu
 
 # --- KOLEJKA DO BUTELKOMATU ---
-# Automat, który zapycha się w 35% prób, był wąskim gardłem, bo był JEDEN.
-# Przy trzech punktach na mapie kolejka babci przestaje być karą, a staje się
-# pytaniem: stoję osiem sekund czy biegnę czterdzieści metrów dalej?
+# Butelkomat na osiedlu jest JEDEN - ten przy Biedronce. Trzy rozstawione po
+# mapie robiły z niego infrastrukturę: zawsze któryś był wolny, zawsze któryś
+# działał, i żadna awaria niczego nie znaczyła. Jeden automat to punkt, wokół
+# którego kręci się dzień - ale wtedy kolejka nie może być ścianą, tylko
+# WYBOREM. Stąd niższy sufit kolejki, łagodniejsze zmęczenie i wpychanie się.
 const SZANSA_KOLEJKI := 0.4        # że przy automacie ktoś już stoi
 const KOLEJKA_MIN := 6.0
 const KOLEJKA_MAX := 11.0
 const KOLEJKA_PRZERWA_MIN := 22.0  # co ile automat losuje nową babcię
 const KOLEJKA_PRZERWA_MAX := 45.0
-## KOLEJKA ROŚNIE, GDY W NIEJ STOISZ. Bez tego czekanie było zawsze tańsze niż
-## bieg czterdzieści metrów dalej - a wybór, który ma tylko jedną dobrą
-## odpowiedź, nie jest wyborem. Teraz stanie pod automatem dokłada kolejnych
-## gości, więc "przeczekam" ma swoją cenę.
+## KOLEJKA ROŚNIE, GDY W NIEJ STOISZ - stanie pod automatem dokłada kolejnych
+## gości. Przy jednym punkcie sufit musiał zejść z 20 do 14 sekund: dwadzieścia
+## sekund bez żadnej alternatywy to już nie złośliwość osiedla, tylko kara.
 const KOLEJKA_ZASIEG := 6.0        # z tej odległości liczysz się jako stojący
 const KOLEJKA_DOKLADKA_CO := 4.0   # co tyle sekund ktoś MOŻE dojść
 const KOLEJKA_SZANSA_DOKLADKI := 0.6
 const KOLEJKA_DOKLADKA_MIN := 2.5
 const KOLEJKA_DOKLADKA_MAX := 4.5
-const KOLEJKA_MAKS := 20.0         # sufit - osiedle jest złośliwe, nie okrutne
+const KOLEJKA_MAKS := 14.0         # sufit - osiedle jest złośliwe, nie okrutne
 
-## ZMĘCZENIE AUTOMATU. Trzy punkty losowały zapchanie niezależnie, więc
-## statystycznie zawsze któryś działał i wąskie gardło zniknęło za bardzo.
-## Teraz automat, z którego właśnie korzystałeś, zapycha się CHĘTNIEJ - opłaca
-## się krążyć między punktami, a nie dreptać w kółko do jednego.
-const ZMECZENIE_ZA_KURS := 0.13    # o tyle rośnie szansa zapchania po transakcji
-const ZMECZENIE_MAKS := 0.3        # sufit dodatku
+## WPYCHANIE SIĘ BEZ KOLEJKI. Odkąd automat jest jeden, "poczekaj" było jedyną
+## odpowiedzią - a jedyna odpowiedź to nie wybór, tylko przerwa w graniu.
+## Teraz E w kolejce to zakład: albo wchodzisz przed babcię i osiedle zapamięta
+## Ci to na Wsiokometrze, albo dostajesz torebką i kolejka robi się dłuższa.
+const SZANSA_WEPCHNIECIA := 0.55   # że babcia odpuści
+const WEPCHNIECIE_WSIOKOMETR := 14.0
+const WEPCHNIECIE_KARA := 4.0      # sekundy dokładane do kolejki po torebce
+const WEPCHNIECIE_MANDAT := 6.0    # gdy Straż Miejska akurat patrzy
+
+## ZMĘCZENIE AUTOMATU. Przy trzech punktach miało zmuszać do krążenia; przy
+## jednym pilnuje czegoś innego - żeby opłacało się przyjść z PEŁNYM plecakiem,
+## a nie wpadać co chwilę z trzema puszkami. Dlatego sufit spadł z 30 do 16 pp.:
+## automat ma się ociągać, a nie zamieniać w ścianę bez objazdu.
+const ZMECZENIE_ZA_KURS := 0.08    # o tyle rośnie szansa zapchania po transakcji
+const ZMECZENIE_MAKS := 0.16       # sufit dodatku
 const ZMECZENIE_SPADEK := 0.02     # na sekundę - automat "odpoczywa"
 
 # --- Sklepik: na co przepuścić kaucję ---
@@ -122,6 +132,20 @@ const CENA_WODY := 2.0
 const CENA_KAWY := 4.0
 const ENERGETYK_CZAS := 22.0       # sekundy podkręcenia
 const ENERGETYK_BONUS := 1.22      # mnożnik prędkości (mniej niż piwo, ale bez kaca)
+
+# --- PACZKA SZLUGÓW (kiosk) ---
+# Kiosk sprzedawał tylko zdrapkę, czyli czysty hazard - wydajesz i czekasz,
+# co wylosuje. Paczka szlugów to zakup, który coś ROBI, i to dokładnie w tym
+# miejscu, gdzie gra była najbardziej sucha: Wsiokometr ucieka cały czas, więc
+# dobicie do 100% wymaga nieprzerwanej serii. Zapalony szlug ZATRZYMUJE spadek
+# na kilkanaście sekund - to jedyne narzędzie, którym da się TRYB WSIOKA
+# zaplanować, zamiast na niego trafić. Cena: przy fajce nie ma sprintu,
+# bo z fajką w zębach się nie biega, tylko idzie z godnością.
+const CENA_PACZKI := 9.0
+const SZLUGI_W_PACZCE := 10
+const SZLUG_CZAS := 14.0           # sekundy jednego szluga
+const SZLUG_WSIOKOMETR := 10.0     # natychmiastowy zastrzyk przy zapaleniu
+const SZLUG_REGENERACJA := 0.25    # mnożnik regeneracji "Papierosa" przy fajce
 
 # --- Combo ---
 const COMBO_OKNO := 3.0            # sekundy na kolejne podniesienie

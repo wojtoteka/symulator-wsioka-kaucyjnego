@@ -39,6 +39,8 @@ func _ready() -> void:
 	_test_zima()
 	_test_magnes()
 	_test_dachy()
+	_test_szlugi()
+	_test_ustawienia()
 	print("=====================================================")
 	if _bledy == 0:
 		print("WYNIK: wszystkie %d testy przeszły. Kaucja bezpieczna." % _testy)
@@ -160,8 +162,10 @@ func _test_swiat() -> void:
 	print("\n[7] Świat zawiera nowe obiekty")
 	var drzewo := get_tree().root
 	_sprawdz("są auta na obwodnicy", get_tree().get_nodes_in_group("auta").size() > 0)
-	_sprawdz("są cele nawigacji (butelkomaty, skup, tablica, skuter)",
-		get_tree().get_nodes_in_group("cel_nawigacji").size() >= 6)
+	# Butelkomat, skup, tablica ogłoszeń, skuter, wózek - po skasowaniu dwóch
+	# nadmiarowych automatów celów jest mniej, ale każdy rodzaj musi zostać
+	_sprawdz("są cele nawigacji (butelkomat, skup, tablica, skuter)",
+		get_tree().get_nodes_in_group("cel_nawigacji").size() >= 4)
 	_sprawdz("jest patrol straży", get_tree().get_nodes_in_group("straz").size() > 0)
 	var ile_fantow := get_tree().get_nodes_in_group("kolekcjonerskie").size()
 	_sprawdz("na mapie leżą fanty (%d szt.)" % ile_fantow, ile_fantow >= 30)
@@ -551,32 +555,167 @@ func _test_rywalizacja() -> void:
 	_sprawdz("każdy fant zna swoją wartość (Heniek ją liczy)", wartosci_ok)
 	_wyczysc_plecak()
 
-## Trzy butelkomaty zamiast jednego i kolejka babć.
+## JEDEN butelkomat i kolejka, z której da się wyjść.
+##
+## Przez chwilę stały trzy i to był błąd: trzy punkty losujące awarie
+## niezależnie sprawiały, że zawsze któryś działał. Test pilnuje teraz dwóch
+## rzeczy naraz - że automat jest dokładnie jeden ORAZ że kolejka ma drugą
+## odpowiedź poza czekaniem (wpychanie się), bo bez niej jeden automat to
+## kilkanaście sekund patrzenia w plecy babci.
 func _test_butelkomaty() -> void:
-	print("\n[19] Butelkomaty: trzy punkty i kolejka")
+	print("\n[19] Butelkomat: jeden punkt i kolejka, z której da się wyjść")
 	var automaty := get_tree().get_nodes_in_group("butelkomat")
-	_sprawdz("na mapie stoją co najmniej trzy butelkomaty (%d)" % automaty.size(),
-		automaty.size() >= 3)
-	var nazwy := {}
-	var rozstawione := true
+	_sprawdz("na mapie stoi dokładnie jeden butelkomat (%d)" % automaty.size(),
+		automaty.size() == 1)
+	var przy_biedronce := false
+	var umie_kolejke := false
 	for automat in automaty:
-		nazwy[str(automat.nazwa_punktu)] = true
-		if not automat.has_method("czy_kolejka"):
-			rozstawione = false
-	_sprawdz("każdy punkt ma własną nazwę (%d różnych)" % nazwy.size(),
-		nazwy.size() == automaty.size())
-	_sprawdz("każdy automat umie zgłosić kolejkę", rozstawione)
-	# Punkty muszą być ROZRZUCONE - trzy automaty obok siebie nie dają
-	# żadnego wyboru, a o wybór w tym chodzi
-	var najmniejszy_odstep := INF
-	for i in automaty.size():
-		for j in range(i + 1, automaty.size()):
-			najmniejszy_odstep = minf(najmniejszy_odstep,
-				automaty[i].global_position.distance_to(automaty[j].global_position))
-	_sprawdz("automaty dzieli co najmniej 20 m (%.0f m)" % najmniejszy_odstep,
-		najmniejszy_odstep >= 20.0)
+		if str(automat.nazwa_punktu).contains("Biedronce"):
+			przy_biedronce = true
+		if automat.has_method("czy_kolejka"):
+			umie_kolejke = true
+	_sprawdz("stoi przy Biedronce", przy_biedronce)
+	_sprawdz("umie zgłosić kolejkę", umie_kolejke)
+	# Butelkomat musi stać w zasięgu wejścia do sklepu: to punkt, wokół którego
+	# kręci się cały dzień, więc nie może być schowany za rogiem
+	var przy_wejsciu := true
+	for automat in automaty:
+		if automat.global_position.distance_to(Plan.WYJSCIE_SKLEPU) > 12.0:
+			przy_wejsciu = false
+	_sprawdz("automat jest w zasięgu wejścia do Biedronki", przy_wejsciu)
 	_sprawdz("kolejka nie trwa dłużej niż kilkanaście sekund",
 		Balans.KOLEJKA_MAX <= 15.0 and Balans.KOLEJKA_MIN > 0.0)
+	# Sufit kolejki i zmęczenie muszą być ŁAGODNIEJSZE niż przy trzech punktach:
+	# tam zawsze był objazd, tutaj go nie ma
+	_sprawdz("sufit kolejki mieści się w granicach przyzwoitości (%.0f s)" % Balans.KOLEJKA_MAKS,
+		Balans.KOLEJKA_MAKS <= 15.0)
+	_sprawdz("zmęczenie nie robi z automatu ściany (%.0f%% + %.0f%%)" % [
+			Balans.SZANSA_ZAPCHANIA * 100.0, Balans.ZMECZENIE_MAKS * 100.0],
+		Balans.SZANSA_ZAPCHANIA + Balans.ZMECZENIE_MAKS < 0.55)
+	# Kolejka musi ROSNĄĆ WOLNIEJ, NIŻ SCHODZI - inaczej stanięcie w niej byłoby
+	# pułapką bez wyjścia: co sekundę czekania przybywałoby więcej niż ubywa.
+	# Liczymy oczekiwany przyrost na jedno okno dokładki i porównujemy z jego
+	# długością (bo przez ten czas kolejka schodzi sekunda za sekundę).
+	var sredni_przyrost := Balans.KOLEJKA_SZANSA_DOKLADKI * (
+		Balans.KOLEJKA_DOKLADKA_MIN + Balans.KOLEJKA_DOKLADKA_MAX) / 2.0
+	_sprawdz("kolejka rośnie wolniej, niż schodzi (%.1f s na %.0f s)" % [
+			sredni_przyrost, Balans.KOLEJKA_DOKLADKA_CO],
+		sredni_przyrost < Balans.KOLEJKA_DOKLADKA_CO)
+	# WPYCHANIE SIĘ - zakład musi być zakładem: ani pewniakiem, ani samobójstwem
+	_sprawdz("wepchnięcie się jest zakładem, nie pewniakiem (%.0f%%)"
+			% (Balans.SZANSA_WEPCHNIECIA * 100.0),
+		Balans.SZANSA_WEPCHNIECIA > 0.3 and Balans.SZANSA_WEPCHNIECIA < 0.8)
+	_sprawdz("nieudane wepchnięcie coś kosztuje",
+		Balans.WEPCHNIECIE_KARA > 0.0 and Balans.WEPCHNIECIE_MANDAT > 0.0)
+	_sprawdz("udane wepchnięcie płaci Wsiokometrem",
+		Balans.WEPCHNIECIE_WSIOKOMETR > 0.0)
+	_sprawdz("Księga zna wpis za wepchnięcie się",
+		not Osiagniecia.znajdz("wepchniety").is_empty())
+
+## PACZKA SZLUGÓW z kiosku. Sedno: szlug ZATRZYMUJE spadek Wsiokometru (czyli
+## jest narzędziem do zaplanowania TRYBU WSIOKA), kosztuje kasę i sztuki,
+## i nie da się palić dwóch naraz ani palić z pustej paczki.
+func _test_szlugi() -> void:
+	print("\n[23] Paczka szlugów z kiosku")
+	var kasa_pierwotna := Game.kasa
+	var szlugi_pierwotne := Game.szlugi
+	var szlug_pierwotny := Game.szlug
+	Game.szlugi = 0
+	Game.szlug = 0.0
+	Game.kasa = 0.0
+	_sprawdz("bez kasy paczki nie kupisz", not Game.kup_paczke())
+	Game.kasa = Balans.CENA_PACZKI + 5.0
+	_sprawdz("za kasę paczka jest", Game.kup_paczke())
+	_sprawdz("paczka ma %d szt." % Balans.SZLUGI_W_PACZCE,
+		Game.szlugi == Balans.SZLUGI_W_PACZCE)
+	_sprawdz("paczka kosztuje %s" % Game.zl(Balans.CENA_PACZKI),
+		is_equal_approx(Game.kasa, 5.0))
+	Game.wsiokometr = 50.0
+	_sprawdz("szlug się zapala", Game.zapal_szluga() == "")
+	_sprawdz("zapalenie zjada sztukę", Game.szlugi == Balans.SZLUGI_W_PACZCE - 1)
+	_sprawdz("szlug dokłada do Wsiokometru", Game.wsiokometr > 50.0)
+	_sprawdz("gra wie, że palimy", Game.pali_szluga())
+	_sprawdz("dwóch naraz się nie da", Game.zapal_szluga() != "")
+	# Najważniejsze: przy zapalonym szlugu pasek NIE spada. Wołamy _process()
+	# wprost, bo o to dokładnie chodzi - ale odkręcamy potem zegar dnia,
+	# żeby test nie zjadł graczowi dwóch sekund rundy.
+	var czas_pierwotny := Game.czas
+	var przed := Game.wsiokometr
+	Game._czas_bezczynnosci = 10.0
+	Game._process(1.0)
+	_sprawdz("przy zapalonym szlugu Wsiokometr stoi w miejscu",
+		is_equal_approx(Game.wsiokometr, przed))
+	Game.szlug = 0.0
+	Game._process(1.0)
+	_sprawdz("po zgaśnięciu szluga Wsiokometr znowu ucieka", Game.wsiokometr < przed)
+	Game.czas = czas_pierwotny
+	Game.szlugi = 0
+	_sprawdz("z pustej paczki nie zapalisz", Game.zapal_szluga() != "")
+	_sprawdz("Księga zna wpis za palenie",
+		not Osiagniecia.znajdz("palacz").is_empty())
+	Game.kasa = kasa_pierwotna
+	Game.szlugi = szlugi_pierwotne
+	Game.szlug = szlug_pierwotny
+	Game._czas_bezczynnosci = 0.0
+	Game.wsiokometr = 0.0
+
+## USTAWIENIA. Panel urósł z trzech pozycji do dziewięciu, a każda z nich coś
+## realnie WYŁĄCZA. Test pilnuje, żeby wyłączniki faktycznie wyłączały i żeby
+## wszystko przeżyło zapis na dysk - ustawienie, które nie wraca po restarcie,
+## jest gorsze niż jego brak.
+func _test_ustawienia() -> void:
+	print("\n[24] Ustawienia faktycznie coś ustawiają")
+	var kopia := {
+		"muzyka": Game.glosnosc_muzyki, "os": Game.odwroc_os_y,
+		"fov": Game.pole_widzenia, "wstrzasy": Game.wstrzasy,
+		"strzalka": Game.strzalka, "podpowiedzi": Game.podpowiedzi,
+	}
+	# Wstrząsy: wyłączone znaczy ANI JEDNEGO sygnału
+	var wstrzasy_zliczone := [0]
+	var licznik := func(_sila: float) -> void: wstrzasy_zliczone[0] += 1
+	Game.wstrzas.connect(licznik)
+	Game.wstrzasy = true
+	Game.wstrzasnij(0.5)
+	_sprawdz("włączone wstrząsy dochodzą do kamery", wstrzasy_zliczone[0] == 1)
+	Game.wstrzasy = false
+	Game.wstrzasnij(0.5)
+	_sprawdz("wyłączone wstrząsy nie dochodzą wcale", wstrzasy_zliczone[0] == 1)
+	Game.wstrzas.disconnect(licznik)
+	# Pole widzenia trzyma się widełek, w których gra nadal wygląda jak gra
+	Game.ustaw_pole_widzenia(500.0)
+	_sprawdz("pole widzenia ma sufit (%.0f)" % Game.pole_widzenia, Game.pole_widzenia <= 100.0)
+	Game.ustaw_pole_widzenia(1.0)
+	_sprawdz("pole widzenia ma podłogę (%.0f)" % Game.pole_widzenia, Game.pole_widzenia >= 60.0)
+	Game.ustaw_glosnosc_muzyki(2.0)
+	_sprawdz("głośność muzyki mieści się w 0-1", Game.glosnosc_muzyki <= 1.0)
+	# Zapis i odczyt - ustawienie, które nie przeżywa restartu, nie istnieje
+	Game.glosnosc_muzyki = 0.35
+	Game.odwroc_os_y = true
+	Game.pole_widzenia = 88.0
+	Game.wstrzasy = false
+	Game.strzalka = false
+	Game.podpowiedzi = false
+	Game.zapisz_ustawienia()
+	Game.glosnosc_muzyki = 1.0
+	Game.odwroc_os_y = false
+	Game.pole_widzenia = 75.0
+	Game.wstrzasy = true
+	Game.strzalka = true
+	Game.podpowiedzi = true
+	Game._wczytaj_ustawienia()
+	_sprawdz("głośność muzyki przeżywa zapis", is_equal_approx(Game.glosnosc_muzyki, 0.35))
+	_sprawdz("odwrócona oś Y przeżywa zapis", Game.odwroc_os_y)
+	_sprawdz("pole widzenia przeżywa zapis", is_equal_approx(Game.pole_widzenia, 88.0))
+	_sprawdz("wyłączone wstrząsy przeżywają zapis", not Game.wstrzasy)
+	_sprawdz("wyłączona strzałka przeżywa zapis", not Game.strzalka)
+	_sprawdz("wyłączone podpowiedzi przeżywają zapis", not Game.podpowiedzi)
+	Game.glosnosc_muzyki = kopia["muzyka"]
+	Game.odwroc_os_y = kopia["os"]
+	Game.pole_widzenia = kopia["fov"]
+	Game.wstrzasy = kopia["wstrzasy"]
+	Game.strzalka = kopia["strzalka"]
+	Game.podpowiedzi = kopia["podpowiedzi"]
+	Game.zapisz_ustawienia()
 
 ## ZIMA. Śnieg nie może być "deszczem w innym kolorze": ma być ślisko BARDZIEJ,
 ## ma się losować dopiero od pewnego dnia kariery i ma zmieniać opis dnia.
@@ -650,12 +789,12 @@ func _test_magnes() -> void:
 
 ## DACHY. Plan.DACHY jest jedynym źródłem prawdy o zadaszeniu - pyta o nie
 ## i rozrzucanie łupu, i miks dźwięku deszczu. Gdyby prostokąt rozminął się
-## z wiatą, butelki leżałyby na deszczu, a blacha bębniła nad trawnikiem.
+## z daszkiem, butelki leżałyby na deszczu, a blacha bębniła nad trawnikiem.
 func _test_dachy() -> void:
 	print("
-[22] Wiaty faktycznie mają dach")
-	_sprawdz("na mapie są co najmniej trzy zadaszone miejsca (%d)" % Plan.DACHY.size(),
-		Plan.DACHY.size() >= 3)
+[22] Podcień Biedronki faktycznie jest dachem")
+	_sprawdz("na mapie jest zadaszone miejsce (%d)" % Plan.DACHY.size(),
+		Plan.DACHY.size() >= 1)
 	var poprawne := true
 	for d: Array in Plan.DACHY:
 		if d.size() != 4 or d[0] >= d[1] or d[2] >= d[3]:
@@ -667,13 +806,20 @@ func _test_dachy() -> void:
 		if not Plan.pod_dachem(srodek.x, srodek.z):
 			srodki_ok = false
 	_sprawdz("środek każdego dachu leży pod tym dachem", srodki_ok)
-	# Butelkomaty z wiatami MUSZĄ stać w zadaszonej strefie
+	# Butelkomat MUSI stać w zadaszonej strefie - podcień nad wejściem do
+	# Biedronki jest jednym z dachów i to nie może się rozjechać po przesunięciu
+	var automaty := get_tree().get_nodes_in_group("butelkomat")
 	var pod_dachem := 0
-	for automat in get_tree().get_nodes_in_group("butelkomat"):
+	for automat in automaty:
 		if Plan.pod_dachem(automat.global_position.x, automat.global_position.z):
 			pod_dachem += 1
-	_sprawdz("wszystkie trzy butelkomaty stoją pod dachem (%d)" % pod_dachem,
-		pod_dachem >= 3)
+	_sprawdz("butelkomat stoi pod dachem (%d z %d)" % [pod_dachem, automaty.size()],
+		automaty.size() > 0 and pod_dachem == automaty.size())
+	# Zadaszenie musi być NAD CZYMŚ, co istnieje. Blaszane wiaty postawione pod
+	# dodatkowe butelkomaty zniknęły razem z nimi, więc jedyny dach na mapie to
+	# podcień Biedronki - i to pod nim ma się chować łup w deszczu.
+	var dach_przy_biedronce := Plan.pod_dachem(0.0, -27.0)
+	_sprawdz("podcień przed Biedronką liczy się jako dach", dach_przy_biedronce)
 	_sprawdz("środek trawnika dachu nie ma", not Plan.pod_dachem(0.0, 10.0))
 	_sprawdz("obwodnica dachu nie ma", not Plan.pod_dachem(30.0, 0.0))
 

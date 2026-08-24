@@ -10,8 +10,8 @@ extends Node3D
 ## symulowany nad całą mapą kosztowałby dziesiątki tysięcy cząsteczek,
 ## a i tak widać tylko te kilka metrów wokół kamery.
 ##
-## POD DACHEM jest inaczej. Szum deszczu grał wszędzie tak samo, więc wiaty
-## były tylko bryłą - a schowanie się przed deszczem to jedna z tych rzeczy,
+## POD DACHEM jest inaczej. Szum deszczu grał wszędzie tak samo, więc podcień
+## Biedronki był tylko bryłą - a schowanie się przed deszczem to jedna z tych rzeczy,
 ## które sprzedają pogodę lepiej niż same cząsteczki. Teraz pod blachą szum
 ## przygasa i wchodzi bębnienie. Przy śniegu nic nie bębni - i to też jest
 ## informacja: cisza pod dachem brzmi jak zima.
@@ -108,17 +108,25 @@ func _ustaw_snieg() -> void:
 	_krople.scale_amount_max = 1.5
 	var platek := QuadMesh.new()
 	platek.size = Vector2(0.09, 0.09)
-	platek.material = _material_opadu(Color(1.0, 1.0, 1.0, 0.9))
+	platek.material = _material_opadu(Color.WHITE)
 	_krople.mesh = platek
 
+## Materiał opadu. Kropla jest PRZEZROCZYSTA, bo deszcz ma być ledwo widoczną
+## kreską - płatek NIE JEST, i to jest świadoma decyzja.
+##
+## Płatek miał wcześniej alfę 0,9, czyli wyglądał na biały, a mimo to każdy
+## z siedmiuset trafiał do kolejki przezroczystości: sortowanie i mieszanie
+## warstw na każdą klatkę za coś, czego i tak nie widać. Nieprzezroczysty
+## wygląda tak samo i rysuje się raz. To samo dotyczy zasp (patrz niżej).
 func _material_opadu(kolor: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = kolor
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	# Płatek ma być widoczny z każdej strony; kropla ma zostać kreską
 	if Game.snieg():
 		mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	else:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return mat
 
 # =============================================================================
@@ -144,10 +152,15 @@ func _zbuduj_kaluze() -> void:
 
 ## Zaspy - białe płachty tam, gdzie kałuże byłyby w deszczu. Większe
 ## i jaśniejsze, bo śnieg nie zbiera się w kropki, tylko przykrywa.
+##
+## NIEPRZEZROCZYSTE, w odróżnieniu od kałuż. Kałuża musi przepuszczać to, co
+## pod nią (inaczej jest plamą farby), zaspa nie: przy alfie 0,92 i tak nie
+## było widać, co pod spodem. Czterdzieści cztery blendowane płachty
+## o promieniu do czterech metrów to spory kawałek ekranu rysowany
+## z sortowaniem za nic.
 func _zbuduj_zaspy() -> void:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.93, 0.95, 0.99, 0.92)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.93, 0.95, 0.99)
 	mat.roughness = 0.85          # śnieg nie błyszczy, tylko rozprasza
 	_rozsyp_placki(mat, 44, 1.4, 4.2, 0.05)
 
@@ -186,7 +199,7 @@ func _zbuduj_dzwiek() -> void:
 		_szum.volume_db = SZUM_NA_OTWARTYM
 	add_child(_szum)
 	# Bębnienie o blachę ma sens tylko przy deszczu. Śnieg pada bezgłośnie
-	# i cisza pod wiatą jest wtedy własną informacją.
+	# i cisza pod daszkiem jest wtedy własną informacją.
 	if Game.snieg():
 		return
 	_blacha = AudioStreamPlayer.new()

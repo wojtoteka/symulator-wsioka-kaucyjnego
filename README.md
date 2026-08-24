@@ -1,13 +1,14 @@
 # Symulator Wsioka Kaucyjnego
 
-Gra 3D w Godot 4.3 o zbieraniu butelek na kaucję. Biegasz po osiedlu, wyciągasz puszki z koszy i trzepaków, oddajesz je do butelkomatu, a zarobek przepuszczasz w kiosku na energetyki i batony. Rzecz zrobiona pół żartem, ale z pełnym systemem ekonomii, kariery i wyzwań.
+Gra 3D w Godot 4.3 o zbieraniu butelek na kaucję. Biegasz po osiedlu, wyciągasz puszki z koszy i trzepaków, oddajesz je do butelkomatu, a zarobek przepuszczasz na energetyki, batony i paczkę szlugów. Rzecz zrobiona pół żartem, ale z pełnym systemem ekonomii, kariery i wyzwań.
 
 ## Rozgrywka
 
 **Dzień trwa 5 minut.** W tym czasie trzeba wyrobić losowany cel kwotowy i zaliczyć wyzwanie dnia. Oba wykonane - premia. Cokolwiek niezaliczone - kara ściągana z banku kariery.
 
 - **Zbieranie i pojemność** - plecak mieści 20 przedmiotów, potem trzeba iść do butelkomatu albo skupu złomu.
-- **Trzy butelkomaty** - przy Biedronce, pod małym blokiem i na placu garażowym. Każdy potrafi mieć **kolejkę babć**, a kolejka **rośnie, kiedy w niej stoisz** (dochodzą kolejni), więc "przeczekam" ma swoją cenę. Do tego automat, z którego właśnie korzystałeś, **męczy się** i zapycha chętniej - opłaca się krążyć między punktami, a nie dreptać do jednego.
+- **Butelkomat przy Biedronce** - jeden na całe osiedle i to jest decyzja projektowa: trzy punkty losujące awarie niezależnie sprawiały, że zawsze któryś działał i zawsze któryś był wolny, więc ani kolejka, ani zapchanie nic nie znaczyły. Automat potrafi mieć **kolejkę babć**, a kolejka **rośnie, kiedy w niej stoisz**. Skoro nie ma dokąd uciec, kolejka ma drugie wyjście: **E = wpychasz się**. Zakład - albo wchodzisz przed babcię i osiedle zapisuje Ci to na Wsiokometrze, albo dostajesz torebką, kolejka rośnie, a jak Straż akurat patrzy, jest i mandat. Do tego automat świeżo po transakcji **męczy się** i zapycha chętniej, więc opłaca się przyjść z pełnym plecakiem raz zamiast wpadać co chwilę z trzema puszkami.
+- **Paczka szlugów z kiosku** - kiosk sprzedawał tylko zdrapkę, czyli czysty hazard. Paczka za 9 zł to zakup, który coś **robi**: zapalony szlug (**Q**) na kilkanaście sekund **zatrzymuje spadek Wsiokometru**. To jedyne narzędzie, którym TRYB WSIOKA da się zaplanować zamiast na niego trafić. Cena: przy fajce nie ma sprintu, a "Papieros" ledwo się odbudowuje. Paczka przechodzi na następny dzień.
 - **Combo** - szybkie zbieranie pod rząd podbija mnożnik; przerwa dłuższa niż okno combo zbija go do zera.
 - **Wsiokometr i TRYB WSIOKA** - pasek 0-100 napędzany stylem gry. Ucieka cały czas (a przy staniu w miejscu szybciej), a ostatnie 30% stawia opór, więc końcówkę trzeba wyszarpać serią. Przy 100% odpala się kilkanaście sekund szału: **podwójna kaucja**, ekran w sepii i disco polo z okna na cały regulator. Potem pasek spada, więc trzeba wyrobić go od nowa.
 - **Pojedynek z Heńkiem** - konkurent poluje na te same butelki, a jego utarg widać obok Twojego przez cały dzień. Z każdym dniem kariery odpoczywa krócej, a **od czwartego dnia poznaje się na złocie** - czyli poluje dokładnie na to, na co Ty. Na koniec rozliczenie („Ty 84 zł / Heniek 71 zł") i osobna premia za wygraną.
@@ -27,10 +28,10 @@ Losowana raz na dzień: słonecznie, pochmurno, deszcz albo - od piętnastego dn
 
 - mniej przechodniów na osiedlu (ludzie siedzą w domach),
 - śliska nawierzchnia - obniżona przyczepność pojazdów i gorsze hamowanie na piechotę,
-- za to **więcej butelek pod wiatami**, bo kto pije w deszczu, ten pije pod dachem,
+- za to **więcej butelek pod podcieniem Biedronki**, bo kto pije w deszczu, ten pije pod dachem,
 - do tego kałuże, krople i przygaszone, wyprane z błękitu światło.
 
-**Pod dachem brzmi inaczej.** Wiaty butelkomatów i podcień przed Biedronką to realne strefy (`Plan.DACHY`): wchodzisz pod blachę, szum deszczu przygasa i wchodzi bębnienie o daszek. Zimą nic nie bębni - i ta cisza też jest informacją.
+**Pod dachem brzmi inaczej.** Podcień przed Biedronką to realne strefy (`Plan.DACHY`): wchodzisz pod blachę, szum deszczu przygasa i wchodzi bębnienie o daszek. Zimą nic nie bębni - i ta cisza też jest informacją.
 
 ### Zima
 
@@ -51,7 +52,7 @@ Dzień kariery ma nazwę, a każdy dzień tygodnia ma charakter:
 
 ### Księga wsioka
 
-30 osiągnięć liczonych przez całą karierę („100 śmietników", „przejechany przez auto 3 razy", „dzień bez jednego piwa"). Liczniki idą tym samym kanałem, co reszta statystyk, toast leci istniejącym sygnałem `meme`, a stan siedzi w sekcji `[osiagniecia]` pliku `user://kariera.cfg`.
+31 osiągnięć liczonych przez całą karierę („100 śmietników", „przejechany przez auto 3 razy", „dzień bez jednego piwa"). Liczniki idą tym samym kanałem, co reszta statystyk, toast leci istniejącym sygnałem `meme`, a stan siedzi w sekcji `[osiagniecia]` pliku `user://kariera.cfg`.
 
 Całą listę - razem z postępem („62/100 śmietników") i tym, czego jeszcze brakuje - obejrzysz pod **Esc → KSIĘGA WSIOKA**.
 
@@ -88,7 +89,7 @@ Osiedle powstaje w całości z kodu, ale nie w jednym pliku. `world.gd` trzyma t
 |---|---|
 | `scripts/plan_osiedla.gd` | **Plan osiedla** - jedno źródło prawdy o tym, gdzie co stoi (`Plan.czy_zajete`, `Plan.pod_dachem`) |
 | `scripts/world_bryly.gd` | Wspólne klocki: `pudlo()`, `walec()`, `przeszkoda()`, `multi()` |
-| `scripts/world_budynki.gd` | Biedronka z wnętrzem, bloki, garaże, działki, wiaty z butelkomatami, płot |
+| `scripts/world_budynki.gd` | Biedronka z wnętrzem i podcieniem, bloki, garaże, działki, płot |
 | `scripts/world_zielen.gd` | Drzewa, krzaki, kamienie, chmury |
 | `scripts/world_npc.gd` | Mieszkańcy, ruch uliczny, śmietniki, rozrzucony łup |
 | `scripts/pora_dnia.gd` | Słońce, niebo, mgła i ich zmiana w czasie rundy |
@@ -96,7 +97,20 @@ Osiedle powstaje w całości z kodu, ale nie w jednym pliku. `world.gd` trzyma t
 
 ## Sterowanie
 
-WSAD - ruch · **E** - podnieś/użyj · Shift - sprint · **F** - argument siłowy · Ctrl - przysiad/drift · Mysz - rozglądanie · Esc - pauza · F11 - pełny ekran
+WSAD - ruch · **E** - podnieś/użyj · **F** - argument siłowy (i przełącznik towaru w kiosku oraz automacie) · **Q** - zapal szluga · Shift - sprint · Ctrl - przysiad/drift · V - kamera TPP/FPP · Mysz - rozglądanie · Esc - pauza · F11 - pełny ekran
+
+### Ustawienia
+
+**Esc → USTAWIENIA** to dziewięć pozycji w dwóch kolumnach i każda z nich coś realnie wyłącza:
+
+| Sekcja | Co można przestawić |
+|---|---|
+| Dźwięk | głośność efektów, osobno głośność muzyki (disco polo z okna) |
+| Sterowanie | czułość myszy, odwrócona oś Y |
+| Obraz | pole widzenia (60-100°), wstrząsy kamery, pełny ekran |
+| Interfejs | strzałka nawigacji, podpowiedzi na start |
+
+Na dole panelu siedzi **SKASUJ KARIERĘ** - jedyne nieodwracalne miejsce w grze, więc pyta dwa razy. Wszystko ląduje w `user://ustawienia.cfg` i wraca po restarcie.
 
 ## Uruchomienie
 
@@ -112,11 +126,11 @@ godot -- --autostart --zrzut      # obchodzi mapę i zapisuje PNG do user://zrzu
 godot -- --autostart --snieg      # wymusza zimę (bez czekania do dnia 15)
 ```
 
-`--testy` to 147 sprawdzeń logiki, której nie da się przeklikać w headless: plecak z kategoriami, rozliczenie dnia, rozmieszczenie obiektów na mapie, kolumna aut, dni tygodnia, pogoda, tryb wsioka, Księga wsioka, pojedynek z Heńkiem, kolejki do butelkomatów, zima, bateria magnesu i zasięg wiat. Te same testy chodzą przy każdym pushu - patrz `.github/workflows/testy.yml`.
+`--testy` to 179 sprawdzeń logiki, której nie da się przeklikać w headless: plecak z kategoriami, rozliczenie dnia, rozmieszczenie obiektów na mapie, kolumna aut, dni tygodnia, pogoda, tryb wsioka, Księga wsioka, pojedynek z Heńkiem, kolejka do butelkomatu i wpychanie się, paczka szlugów, ustawienia (razem z zapisem na dysk), zima, bateria magnesu i zasięg zadaszenia. Te same testy chodzą przy każdym pushu - patrz `.github/workflows/testy.yml`.
 
 ## Dźwięk
 
-Wszystkie efekty są **generowane w kodzie** (`scripts/sfx.gd`) - projekt nie potrzebuje żadnych plików audio. Dotyczy to też muzyki: gdy w `music/` nie ma ani jednego pliku, przy wielkich momentach wchodzi **syntezowany kawałek disco polo** (bas na kwadracie, stopa, hi-hat i przygrywka - `_generuj_klasyk()`). Deszcz ma własny, generowany szum, a pod blaszanymi wiatami - osobną pętlę bębnienia (`petla_dachu()`, kilkaset losowych stuknięć zamiast filtrowanego szumu, bo dach to transjenty, nie woda).
+Wszystkie efekty są **generowane w kodzie** (`scripts/sfx.gd`) - projekt nie potrzebuje żadnych plików audio. Dotyczy to też muzyki: gdy w `music/` nie ma ani jednego pliku, przy wielkich momentach wchodzi **syntezowany kawałek disco polo** (bas na kwadracie, stopa, hi-hat i przygrywka - `_generuj_klasyk()`). Deszcz ma własny, generowany szum, a pod blaszanym podcieniem - osobną pętlę bębnienia (`petla_dachu()`, kilkaset losowych stuknięć zamiast filtrowanego szumu, bo dach to transjenty, nie woda).
 
 Wrzucenie własnych `.mp3` do `music/` po prostu podmienia tę ścieżkę na prawdziwą - gra losuje wtedy jeden z Twoich utworów i gra jego refren.
 

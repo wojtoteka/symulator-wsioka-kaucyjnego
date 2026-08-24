@@ -23,13 +23,17 @@ const WYJSCIE_SKLEPU := Vector3(0, 0.1, -25.5)    # lądowanie na osiedlu
 
 ## DACHY - miejsca, w których nad głową gracza coś jest. Prostokąty jak wyżej.
 ##
-## Trzymamy je TUTAJ, a nie w skrypcie wiaty, bo pytają o nie dwie zupełnie
+## Trzymamy je TUTAJ, a nie w skrypcie budynku, bo pytają o nie dwie zupełnie
 ## różne warstwy: SwiatNpc (gdzie w deszczu chowają się butelki) i Pogoda
 ## (kiedy przygasić szum deszczu i włączyć bębnienie o blachę). Gdyby każda
-## liczyła to sama, po pierwszym przesunięciu wiaty jedna z nich by kłamała.
+## liczyła to sama, po pierwszym przesunięciu daszku jedna z nich by kłamała.
+##
+## Został JEDEN: podcień nad wejściem do Biedronki. Dwie blaszane wiaty
+## (pod małym blokiem i na placu garażowym) postawiono pod dodatkowe
+## butelkomaty, a gdy automat wrócił do jednego, zostały tam stać bez powodu.
+## Teraz jedyne miejsce, gdzie da się schować przed deszczem, jest dokładnie
+## tam, gdzie i tak trzeba dojść z pełnym plecakiem.
 const DACHY: Array = [
-	[-10.3, -6.7, 17.2, 20.8],    # wiata pod małym blokiem
-	[35.2, 38.8, -14.8, -11.2],   # wiata przy garażach
 	[-5.5, 8.5, -28.4, -25.4],    # podcień przed wejściem do Biedronki
 ]
 
@@ -82,7 +86,7 @@ static func pod_dachem(x: float, z: float) -> bool:
 			return true
 	return false
 
-## Środek dachu numer "i" - używane przy rozrzucaniu łupu pod wiaty.
+## Środek dachu numer "i" - używane przy rozrzucaniu łupu pod zadaszenie.
 static func srodek_dachu(i: int) -> Vector3:
 	var d: Array = DACHY[i % DACHY.size()]
 	return Vector3((d[0] + d[1]) * 0.5, 0.0, (d[2] + d[3]) * 0.5)
